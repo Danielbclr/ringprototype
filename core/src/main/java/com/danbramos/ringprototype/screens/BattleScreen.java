@@ -32,6 +32,7 @@ import com.danbramos.ringprototype.battle.SkillType;
 import com.danbramos.ringprototype.quests.QuestManager;
 import com.danbramos.ringprototype.resources.ResourceType; // Import ResourceType for rewards
 import com.danbramos.ringprototype.screens.ui.BattleUiManager;
+import com.danbramos.ringprototype.battle.TurnManager; // Import TurnManager
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,9 +66,6 @@ public class BattleScreen implements Screen {
     private Random random = new Random();
 
     // Turn Management
-    private Array<IBattleActor> turnOrder;
-    private int currentTurnIndex;
-    private IBattleActor currentTurnActor;
     private boolean battleEnded = false; // Flag to prevent multiple end-game logic calls
 
     // Managers
@@ -76,9 +74,11 @@ public class BattleScreen implements Screen {
 
     private InputMultiplexer inputMultiplexer;
 
+    // +++ Added TurnManager +++
+    private TurnManager turnManager;
+
     public BattleScreen(RingPrototypeGame game) {
         this.game = game;
-        this.turnOrder = new Array<>();
     }
 
     public int getMapWidthInTiles() {
@@ -101,6 +101,8 @@ public class BattleScreen implements Screen {
     public void show() {
         Gdx.app.log("BattleScreen", "Showing BattleScreen.");
         battleEnded = false; // Reset battle end flag
+        turnManager = new TurnManager(); // Instantiate TurnManager
+        
         map = new TmxMapLoader().load("tilemaps/battle_map.tmx");
         shapeRenderer = new ShapeRenderer();
 
@@ -140,8 +142,10 @@ public class BattleScreen implements Screen {
         
         // Generate random enemies and positions
         generateRandomEncounter();
-
-        initializeTurnSystem();
+        
+        // Initialize turn system using TurnManager
+        turnManager.initializeTurnOrder(game.partyManager.getMembers(), game.currentBattleEnemies);
+        startTurnFor(turnManager.getCurrentActor()); // Start turn for the first actor
     }
     
     /**
@@ -301,38 +305,6 @@ public class BattleScreen implements Screen {
         return position;
     }
 
-    private void initializeTurnSystem() {
-        turnOrder.clear();
-        for (GameCharacter character : game.partyManager.getMembers()) {
-            if (character != null && character.getHealthPoints() > 0) { // Only add living characters
-                turnOrder.add(new BattleCharacter(character));
-            }
-        }
-        for (Enemy enemy : game.currentBattleEnemies) {
-            if (enemy != null && enemy.isAlive()) {
-                turnOrder.add(enemy);
-            }
-        }
-
-        if (turnOrder.size > 0) {
-            // Simple initiative: players first, then enemies (can be expanded)
-            turnOrder.sort((a1, a2) -> {
-                if (a1 instanceof BattleCharacter && a2 instanceof Enemy) return -1;
-                if (a1 instanceof Enemy && a2 instanceof BattleCharacter) return 1;
-                return 0; // Or sort by a stat like speed/initiative
-            });
-
-            currentTurnIndex = 0;
-            currentTurnActor = turnOrder.get(currentTurnIndex);
-            startTurnFor(currentTurnActor);
-        } else {
-            currentTurnActor = null;
-            Gdx.app.error("BattleScreen", "No combatants to start battle turns.");
-            uiManager.updateTurnInfo(null);
-            handleBattleEnd(); // If no one to fight, battle ends immediately
-        }
-    }
-
     private void startTurnFor(IBattleActor actor) {
         if (actor == null || battleEnded) return;
         inputHandler.resetState();
@@ -343,7 +315,8 @@ public class BattleScreen implements Screen {
 
         if (actor instanceof BattleCharacter) {
             BattleCharacter bc = (BattleCharacter) actor;
-            if (!bc.hasPerformedMajorAction()) {
+            // Always calculate movement tiles at turn start if movement > 0
+            if (bc.getRemainingMovement() > 0) { 
                 inputHandler.calculateMovementReachableTiles(bc);
             }
             uiManager.setEndTurnButtonDisabled(false);
@@ -356,58 +329,32 @@ public class BattleScreen implements Screen {
     public void advanceTurn() {
         if (battleEnded) return;
 
-        if (currentTurnActor != null) {
-            currentTurnActor.endTurn();
+        IBattleActor currentActor = turnManager.getCurrentActor();
+        if (currentActor != null) {
+            currentActor.endTurn(); // End turn for the actor who just finished
         }
-        inputHandler.resetState();
+        inputHandler.resetState(); // Reset input state for the new turn
 
-        for (int i = turnOrder.size - 1; i >= 0; i--) {
-            IBattleActor actor = turnOrder.get(i);
-            if (!actor.isAlive()) {
-                Gdx.app.log("BattleScreen", actor.getName() + " is defeated, removing from turn order.");
-                turnOrder.removeIndex(i);
-                if (actor == currentTurnActor) {
-                    currentTurnActor = null;
-                }
+        IBattleActor nextActor = turnManager.advanceTurn();
+        
+        if (nextActor == null) { // advanceTurn returns null if battle is over
+            if (!battleEnded) { // Check battleEnded flag to prevent multiple calls
+                 Gdx.app.log("BattleScreen", "Battle Over condition met via TurnManager.");
+                 handleBattleEnd();
             }
-        }
-
-        if (isBattleOver()) {
-            Gdx.app.log("BattleScreen", "Battle Over condition met.");
-            handleBattleEnd();
             return;
         }
 
-        if (turnOrder.isEmpty()) { // Should be caught by isBattleOver, but as a safeguard
-            Gdx.app.error("BattleScreen", "Turn order became empty unexpectedly.");
-            handleBattleEnd();
-            return;
-        }
-
-        currentTurnIndex = (currentTurnIndex + 1) % turnOrder.size;
-        currentTurnActor = turnOrder.get(currentTurnIndex);
-        startTurnFor(currentTurnActor);
+        startTurnFor(nextActor);
     }
 
     public boolean isTileWithinMapBounds(float tileX, float tileY) {
         return tileX >= 0 && tileX < mapWidthInTiles && tileY >= 0 && tileY < mapHeightInTiles;
     }
 
+    // Delegated to TurnManager
     public boolean isBattleOver() {
-        if (turnOrder.isEmpty() && !battleEnded) return true; // No one left
-
-        boolean playersAlive = false;
-        boolean enemiesAlive = false;
-        for (IBattleActor actor : turnOrder) {
-            if (actor.isAlive()) {
-                if (actor instanceof BattleCharacter) {
-                    playersAlive = true;
-                } else if (actor instanceof Enemy) {
-                    enemiesAlive = true;
-                }
-            }
-        }
-        return (!playersAlive || !enemiesAlive) && !battleEnded;
+        return turnManager.isBattleOver() || battleEnded; // Also check local flag
     }
 
     private void handleBattleEnd() {
@@ -415,31 +362,30 @@ public class BattleScreen implements Screen {
         battleEnded = true;
 
         Gdx.app.log("BattleScreen", "Handling battle end.");
-        currentTurnActor = null; // Stop further actions
+        // Current actor is already null or irrelevant as battle ended via TurnManager check
         inputHandler.resetState();
         uiManager.setEndTurnButtonDisabled(true);
         uiManager.clearSkillButtons();
+        uiManager.hidePopupMenu(); // Ensure popup is hidden
 
+        // Determine winner based on who is left in TurnManager's final state
         boolean playersWon = false;
+        boolean enemiesStillAlive = false; // Check if any enemies survived
         int livingPlayerCount = 0;
-        for(IBattleActor actor : turnOrder) {
-            if(actor instanceof BattleCharacter && actor.isAlive()) {
-                livingPlayerCount++;
+        
+        for(IBattleActor actor : turnManager.getTurnOrder()) { // Check the final turn order list
+            if(actor.isAlive()){
+                if(actor instanceof BattleCharacter){
+                    livingPlayerCount++;
+                } else if (actor instanceof Enemy){
+                    enemiesStillAlive = true;
+                }
             }
         }
-        // Check if any enemies are still alive
-        boolean enemiesStillAlive = false;
-        for(IBattleActor actor : turnOrder) {
-            if(actor instanceof Enemy && actor.isAlive()) {
-                enemiesStillAlive = true;
-                break;
-            }
-        }
-
+        
         if (livingPlayerCount > 0 && !enemiesStillAlive) {
             playersWon = true;
         }
-
 
         if(playersWon) {
             Gdx.app.log("BattleScreen", "PLAYER VICTORY!");
@@ -453,22 +399,31 @@ public class BattleScreen implements Screen {
                 if (uiManager.turnInfoLabel != null) uiManager.turnInfoLabel.setText("VICTORY!");
             }
 
-
-            // Apply XP, loot, etc.
-            for(IBattleActor actor : turnOrder) { // Iterate original turn order to find player characters
-                if(actor instanceof BattleCharacter) {
-                    BattleCharacter bc = (BattleCharacter) actor;
-                    if(bc.isAlive()){ // Only apply to survivors
-                        bc.applyEndOfBattleState();
-                        Gdx.app.log("BattleScreen", bc.getName() + " survived. HP updated.");
-                    }
-                }
+            // Apply XP, loot, etc. to the *original* GameCharacters
+            for(GameCharacter originalChar : game.partyManager.getMembers()){
+                boolean survived = false;
+                int finalHp = 0;
+                 for(IBattleActor battleActor : turnManager.getTurnOrder()){
+                     if(battleActor instanceof BattleCharacter && ((BattleCharacter)battleActor).getSourceCharacter() == originalChar && battleActor.isAlive()){
+                         survived = true;
+                         finalHp = battleActor.getCurrentHp();
+                         break;
+                     }
+                 }
+                 if(survived){
+                     originalChar.setHealthPoints(finalHp); // Apply final HP
+                     // TODO: Apply XP gain here
+                     Gdx.app.log("BattleScreen", originalChar.getName() + " survived. HP updated.");
+                 } else {
+                      Gdx.app.log("BattleScreen", originalChar.getName() + " did not survive.");
+                      // Handle character death persistence if needed
+                 }
             }
-
+            
             // Award resources based on number and type of enemies defeated
             int baseGoldReward = 30;
             int baseFoodReward = 1;
-            int enemyCount = game.currentBattleEnemies.size;
+            int enemyCount = game.currentBattleEnemies.size; // Use the initial enemy list for reward scaling
             
             int goldReward = baseGoldReward * enemyCount + random.nextInt(20);
             int foodReward = baseFoodReward + random.nextInt(enemyCount + 1);
@@ -480,12 +435,13 @@ public class BattleScreen implements Screen {
             // Display rewards in battle log
             uiManager.updateBattleLog("VICTORY!\nYour party gained " + goldReward + " Gold and " + foodReward + " Food.\nReturning to map in 3 seconds...");
 
-
             // Transition back to MapScreen after a delay
             Timer.schedule(new Timer.Task() {
                 @Override
                 public void run() {
-                    game.setScreen(new MapScreen(game));
+                    if (game != null) { // Ensure game still exists
+                        game.setScreen(new MapScreen(game));
+                    }
                 }
             }, 3); // 3 second delay
         } else {
@@ -506,13 +462,12 @@ public class BattleScreen implements Screen {
         }
     }
 
-
     public IBattleActor getCurrentTurnActor() {
-        return currentTurnActor;
+        return turnManager.getCurrentActor();
     }
 
     public boolean isTileOccupied(float tileX, float tileY) {
-        for (IBattleActor actor : turnOrder) {
+        for (IBattleActor actor : turnManager.getTurnOrder()) { // Use turnManager list
             if (actor.isAlive() && actor.getBattleMapPosition().epsilonEquals(tileX, tileY)) {
                 return true;
             }
@@ -521,18 +476,17 @@ public class BattleScreen implements Screen {
     }
 
     public boolean isTileOccupiedByAlly(float tileX, float tileY, IBattleActor askingActor) {
-        for (IBattleActor actorOnTile : turnOrder) {
-            if (actorOnTile.isAlive() && actorOnTile != askingActor && actorOnTile.getBattleMapPosition().epsilonEquals(tileX, tileY)) {
-                if (askingActor instanceof Enemy && actorOnTile instanceof Enemy) {
-                    return true;
-                }
-            }
-        }
-        return false;
+         IBattleActor actorOnTile = getActorAtTile(tileX, tileY);
+         if (actorOnTile == null || actorOnTile == askingActor || !actorOnTile.isAlive()) {
+             return false;
+         }
+         // Check if they are the same type (both players or both enemies)
+         return (askingActor instanceof BattleCharacter && actorOnTile instanceof BattleCharacter) ||
+                (askingActor instanceof Enemy && actorOnTile instanceof Enemy);
     }
 
     public IBattleActor getActorAtTile(float tileX, float tileY) {
-        for (IBattleActor actor : turnOrder) {
+        for (IBattleActor actor : turnManager.getTurnOrder()) { // Use turnManager list
             if (actor.isAlive() && actor.getBattleMapPosition().epsilonEquals(tileX, tileY)) {
                 return actor;
             }
@@ -542,8 +496,8 @@ public class BattleScreen implements Screen {
 
     public void selectSkill(Skill skill) {
         if (battleEnded) return;
-        if (currentTurnActor instanceof BattleCharacter) {
-            inputHandler.selectSkill(skill, (BattleCharacter) currentTurnActor);
+        if (turnManager.getCurrentActor() instanceof BattleCharacter) {
+            inputHandler.selectSkill(skill, (BattleCharacter) turnManager.getCurrentActor());
         }
     }
 
@@ -729,23 +683,24 @@ public class BattleScreen implements Screen {
         mapRenderer.setView(camera);
         mapRenderer.render();
 
-        if (!battleEnded) { // Only render highlights if battle is ongoing
+        if (!battleEnded) {
             renderHighlights();
         }
 
         game.batch.setProjectionMatrix(camera.combined);
         game.batch.begin();
-        for (IBattleActor actor : turnOrder) { // Still render actors even if battle ended for a moment
+        IBattleActor currentActor = turnManager.getCurrentActor(); // Get current actor for highlighting
+        for (IBattleActor actor : turnManager.getTurnOrder()) { // Iterate using TurnManager's list
             if (actor.isAlive() && actor.getBattleSprite() != null && actor.getBattleMapPosition() != null) {
                 Vector2 pos = actor.getBattleMapPosition();
                 float worldX = pos.x * tileWidth;
                 float worldY = pos.y * tileHeight;
-                if (currentTurnActor == actor && !battleEnded) { // Only highlight current turn if battle ongoing
+                if (actor == currentActor && !battleEnded) { // Highlight current actor
                     if (actor instanceof BattleCharacter) game.batch.setColor(Color.YELLOW);
                     else if (actor instanceof Enemy) game.batch.setColor(Color.RED);
                 }
                 game.batch.draw(actor.getBattleSprite(), worldX, worldY, tileWidth, tileHeight);
-                if (currentTurnActor == actor && !battleEnded) game.batch.setColor(Color.WHITE);
+                if (actor == currentActor && !battleEnded) game.batch.setColor(Color.WHITE);
             }
         }
         game.batch.end();
@@ -753,19 +708,20 @@ public class BattleScreen implements Screen {
         stage.act(Math.min(Gdx.graphics.getDeltaTime(), 1 / 30f));
         stage.draw();
 
-        // Enemy AI Turn
-        if (!battleEnded && currentTurnActor instanceof Enemy && !currentTurnActor.hasPerformedMajorAction()) {
-            Enemy enemy = (Enemy) currentTurnActor;
-            enemy.performSimpleAI(turnOrder, this);
-            // Check for battle end after AI action
+        // Enemy AI Turn - Check using TurnManager's current actor
+        currentActor = turnManager.getCurrentActor(); // Re-get in case it changed during player actions
+        if (!battleEnded && currentActor instanceof Enemy && !currentActor.hasPerformedMajorAction()) {
+            Enemy enemy = (Enemy) currentActor;
+            enemy.performSimpleAI(turnManager.getTurnOrder(), this);
+            // Check for battle end immediately after AI action, before advancing turn via main logic
             if(isBattleOver()){
-                handleBattleEnd();
+                 handleBattleEnd(); 
             } else {
-                advanceTurn();
+                // Advance turn only if the battle didn't end during the AI's action
+                advanceTurn(); 
             }
         }
     }
-
 
     @Override
     public void resize(int width, int height) {

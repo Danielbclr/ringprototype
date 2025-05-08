@@ -1,5 +1,6 @@
 package com.danbramos.ringprototype.party;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -17,7 +18,7 @@ public class DefaultPartyManager implements PartyManager {
 
     public DefaultPartyManager() {
         this.members = new Array<>();
-        this.mapPosition = new Vector2(5, 5);
+        this.mapPosition = new Vector2(0, 0);
     }
 
     @Override
@@ -37,8 +38,14 @@ public class DefaultPartyManager implements PartyManager {
     }
 
     @Override
+    public void clearParty() {
+        members.clear();
+        Gdx.app.log("DefaultPartyManager", "Party cleared.");
+    }
+
+    @Override
     public Array<GameCharacter> getMembers() {
-        return members; // Returns the actual array, could return a copy if immutability is strictly needed outside
+        return members;
     }
 
     @Override

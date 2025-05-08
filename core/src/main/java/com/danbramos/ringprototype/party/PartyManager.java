@@ -22,8 +22,13 @@ public interface PartyManager {
     void removeMember(GameCharacter character);
     
     /**
-     * Gets all party members as a LibGDX Array
-     * @return Array of party members
+     * Clears the party
+     */
+    void clearParty();
+    
+    /**
+     * Gets the list of party members
+     * @return An Array containing the party members
      */
     Array<GameCharacter> getMembers();
     
@@ -34,8 +39,8 @@ public interface PartyManager {
     List<GameCharacter> getMembersAsList();
     
     /**
-     * Gets the party size
-     * @return The number of party members
+     * Gets the current number of party members
+     * @return The size of the party
      */
     int getPartySize();
     

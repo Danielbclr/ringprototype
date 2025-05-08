@@ -28,6 +28,7 @@ import com.danbramos.ringprototype.resources.DefaultResourceManager; // Import D
 import com.danbramos.ringprototype.resources.ResourceType;   // Import ResourceType
 import com.badlogic.gdx.utils.Array;
 import com.danbramos.ringprototype.battle.SkillData;
+import com.danbramos.ringprototype.setup.GameSetup; // Import the new setup class
 
 /**
  * Main game class that handles game initialization and resource management
@@ -66,17 +67,15 @@ public class RingPrototypeGame extends Game {
         StringBuilder skillsLog = new StringBuilder("Loaded skills: ");
         for (String skillId : skillData.getAllSkills().keySet()) {
             Skill skill = skillData.getSkill(skillId);
-            skillsLog.append(skill.getName()).append(" (").append(skillId).append("), ");
+            if (skill != null) {
+                skillsLog.append(skill.getName()).append(" (").append(skillId).append("), ");
+            } else {
+                 Gdx.app.error("RingPrototypeGame", "Skill ID '" + skillId + "' returned null skill!");
+            }
         }
         Gdx.app.log("RingPrototypeGame", skillsLog.toString());
 
-        // Example: Set some initial resources after ResourceManager is created
-        resourceManager.setResourceAmount(ResourceType.FOOD, 20);
-        resourceManager.setResourceAmount(ResourceType.FIREWOOD, 10);
-        resourceManager.setResourceAmount(ResourceType.GOLD, 100);
-        resourceManager.setResourceAmount(ResourceType.HOPE, 75);
-        Gdx.app.log("RingPrototypeGame", "Initial resources: " + resourceManager.toString());
-
+        // Load assets (basic for now)
         try {
             characterSheet = new Texture(Gdx.files.internal("spritesheets/colored-transparent_packed.png"));
             Gdx.app.log("RingPrototypeGame", "Character sheet loaded successfully.");
@@ -92,13 +91,24 @@ public class RingPrototypeGame extends Game {
             skin = createFallbackSkin();
             Gdx.app.log("RingPrototypeGame", "Using fallback UI skin.");
         }
+        
+        // Initialize game state using the new setup class
+        GameSetup gameSetup = new GameSetup();
+        gameSetup.initializeInitialResources(resourceManager);
+        gameSetup.initializeInitialParty(partyManager, skillData, characterSheet);
+        gameSetup.initializePartyPosition(partyManager);
 
+        // Finalize setup specific to RingPrototypeGame
         initializeGameData();
 
         Gdx.app.log("RingPrototypeGame", "Game created, setting MapScreen.");
         this.setScreen(new MapScreen(this));
     }
 
+    /**
+     * Performs final initialization steps after core data and state are loaded.
+     * Currently sets the party marker sprite.
+     */
     private void initializeGameData() {
         int tileWidth = 16;
         int tileHeight = 16;
@@ -108,91 +118,15 @@ public class RingPrototypeGame extends Game {
             int markerSpriteX = 27; // tile X on spritesheet
             int markerSpriteY = 0; // tile Y on spritesheet
             partyManager.setPartyMarkerSprite(new TextureRegion(characterSheet, markerSpriteX * tileWidth, markerSpriteY * tileHeight, tileWidth, tileHeight));
-        }
-
-        // Set initial party position near the quest giver
-        partyManager.setMapPosition(12, 10);
-        Gdx.app.log("RingPrototypeGame", "Party positioned on map at: " + partyManager.getMapPosition());
-
-        // --- Get Skills from SkillData ---
-        SkillData skillData = SkillData.getInstance();
-        Skill aragornAttack = skillData.getSkill("skill_slash");
-        Skill legolasShoot = skillData.getSkill("skill_precise_shot");
-        Skill legolasExplosiveArrow = skillData.getSkill("skill_explosive_arrow");
-
-        // --- Initialize Party Members ---
-        GameCharacter aragorn = new Character("Aragorn", GameClass.WARRIOR);
-        aragorn.setMovementRange(4);
-        if (characterSheet != null) {
-            aragorn.setBattleSprite(new TextureRegion(characterSheet, 27 * tileWidth, 0 * tileHeight, tileWidth, tileHeight));
-        }
-        aragorn.setBattleMapPosition(5, 8);
-        aragorn.learnSkill(aragornAttack);
-        Item anduril = new Item("ITM_ANDURIL", "Andúril", "Flame of the West, Sword Reforged.", ItemType.ARTIFACT);
-        anduril.addStatBonus("strength", 2);
-        aragorn.addItemToInventory(anduril);
-        aragorn.equipItem(anduril);
-        aragorn.addItemToInventory(new Item("ITM_POT_HEALTH_S", "Small Health Potion", "Restores a small amount of health.", ItemType.CONSUMABLE));
-        aragorn.addItemToInventory(new Item("ITM_LEATHER_GLOVES", "Leather Gloves", "Basic hand protection.", ItemType.ARMOR_HANDS));
-        partyManager.addMember(aragorn);
-        Gdx.app.log("RingPrototypeGame", "Aragorn (Warrior) added to party. Skills: " + aragorn.getKnownSkills());
-
-
-        GameCharacter legolas = new Character("Legolas", GameClass.RANGER);
-        legolas.setMovementRange(5);
-        if (characterSheet != null) {
-            legolas.setBattleSprite(new TextureRegion(characterSheet, 24 * tileWidth, 1 * tileHeight, tileWidth, tileHeight));
-        }
-        legolas.setBattleMapPosition(7, 8);
-        legolas.learnSkill(legolasShoot);
-        legolas.learnSkill(legolasExplosiveArrow);
-        Item elvenBow = new Item("ITM_LONGBOW_ELF", "Elven Longbow", "A finely crafted bow.", ItemType.WEAPON);
-        elvenBow.addStatBonus("dexterity", 2);
-        legolas.addItemToInventory(elvenBow);
-        legolas.equipItem(elvenBow);
-        legolas.addItemToInventory(new Item("ITM_QUIVER_ARROWS", "Quiver of Arrows", "Holds many arrows.", ItemType.MISCELLANEOUS));
-        partyManager.addMember(legolas);
-        Gdx.app.log("RingPrototypeGame", "Legolas (Ranger) added to party. Skills: " + legolas.getKnownSkills());
-
-        Gdx.app.log("RingPrototypeGame", "Party initialized. Members: " + partyManager.getPartySize());
-
-        // --- Initialize Enemies ---
-        currentBattleEnemies.clear();
-        
-        if (characterSheet != null) {
-            // Create an orc enemy using the EnemyData system
-            Enemy orc = EnemyData.getInstance().createEnemy("orc_grunt", characterSheet, 6, 5);
-            if (orc != null) {
-                currentBattleEnemies.add(orc);
-                Gdx.app.log("RingPrototypeGame", orc.getName() + " added to battle enemies at " + 
-                            orc.getBattleMapPosition() + " with move " + orc.getMovementRange());
-            } else {
-                // Fallback to hardcoded enemy if enemy data loading fails
-                Gdx.app.error("RingPrototypeGame", "Failed to load orc_grunt from EnemyData, using fallback");
-            int orcSpriteSheetX = 27; // Example sprite
-            int orcSpriteSheetY = 2;  // Example sprite
-            TextureRegion orcSprite = new TextureRegion(characterSheet,
-                orcSpriteSheetX * tileWidth,
-                orcSpriteSheetY * tileHeight,
-                tileWidth,
-                tileHeight);
-
-                orc = new Enemy("Orc Grunt", 8, "1d6", orcSprite, 6, 5, 3);
-            currentBattleEnemies.add(orc);
-                Gdx.app.log("RingPrototypeGame", orc.getName() + " added to battle enemies at " + 
-                            orc.getBattleMapPosition() + " with move " + orc.getMovementRange());
-            }
-
-            // Add a warg enemy
-            Enemy warg = EnemyData.getInstance().createEnemy("warg", characterSheet, 8, 3);
-            if (warg != null) {
-                currentBattleEnemies.add(warg);
-                Gdx.app.log("RingPrototypeGame", warg.getName() + " added to battle enemies at " + 
-                             warg.getBattleMapPosition());
-            }
+            Gdx.app.log("RingPrototypeGame", "Party marker sprite set.");
         } else {
-            Gdx.app.error("RingPrototypeGame", "Cannot create enemies, characterSheet is null.");
+            Gdx.app.error("RingPrototypeGame", "Cannot set party marker sprite, characterSheet is null.");
         }
+        
+        // Enemy initialization moved to BattleScreen
+        // Party initialization moved to GameSetup
+        // Resource initialization moved to GameSetup
+        // Party position initialization moved to GameSetup
     }
 
     private Skin createFallbackSkin() {

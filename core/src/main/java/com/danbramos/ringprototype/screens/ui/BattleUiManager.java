@@ -59,7 +59,23 @@ public class BattleUiManager {
     }
 
     private void setupUI() {
-        // Top right panel for turn info and end turn button
+        setupTopRightPanel();
+        setupTopLeftPanel();
+        setupCenterLogPanel();
+        
+        // Create the popup menu (initially hidden)
+        createPopupMenu();
+        
+        // Skill buttons table (placeholder, as popup is used)
+        Table skillButtonTable = new Table();
+        skillButtonTable.setFillParent(true);
+        skillButtonTable.top().center(); 
+        
+        // Add all top-level containers to stage
+        // Note: Popup menu is added/removed dynamically
+    }
+
+    private void setupTopRightPanel() {
         Table topRightPanel = new Table();
         topRightPanel.setFillParent(true);
         topRightPanel.top().right();
@@ -86,8 +102,10 @@ public class BattleUiManager {
         
         topRightPanel.add(turnInfoTable).pad(10).fillX().expandX().right().row();
         topRightPanel.add(endTurnButton).width(150).pad(10).right().row();
-        
-        // Top left panel for active combatant info
+        stage.addActor(topRightPanel);
+    }
+
+    private void setupTopLeftPanel() {
         activeCombatantTable = new Table();
         activeCombatantTable.setFillParent(true);
         activeCombatantTable.top().left();
@@ -112,13 +130,15 @@ public class BattleUiManager {
         combatantInfoTable.add(activeCharManaLabel).left().pad(5);
         combatantInfoTable.add(activeCharManaBar).width(150).height(15).pad(5).row();
         
-        // Add status info
+        // Add status info label here as part of the panel
         actionStateLabel = createLabel("Select an action", "default");
         combatantInfoTable.add(actionStateLabel).colspan(2).left().pad(5).row();
         
         activeCombatantTable.add(combatantInfoTable).pad(10).fillX().expandX().left();
-
-        // Center panel for battle log
+        stage.addActor(activeCombatantTable);
+    }
+    
+    private void setupCenterLogPanel() {
         Table centerPanel = new Table();
         centerPanel.setFillParent(true);
         centerPanel.center().bottom();
@@ -134,20 +154,7 @@ public class BattleUiManager {
         logTable.add(battleLogLabel).width(300).pad(10);
         
         centerPanel.add(logTable).padBottom(100);
-        
-        // Create the popup menu (initially hidden)
-        createPopupMenu();
-        
-        // Skill buttons now at the top center
-        Table skillButtonTable = new Table();
-        skillButtonTable.setFillParent(true);
-        skillButtonTable.top().center(); // Position at top center
-        
-        // Add all UI components to stage
-        stage.addActor(topRightPanel);
-        stage.addActor(activeCombatantTable);
         stage.addActor(centerPanel);
-        stage.addActor(skillButtonTable);
     }
 
     private void createPopupMenu() {
