@@ -9,23 +9,29 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.danbramos.ringprototype.party.Character;
+import com.danbramos.ringprototype.party.GameCharacter;
 import com.danbramos.ringprototype.party.GameClass;
 import com.danbramos.ringprototype.party.PartyManager;
+import com.danbramos.ringprototype.party.DefaultPartyManager;
 import com.danbramos.ringprototype.screens.MapScreen;
 import com.danbramos.ringprototype.items.Item;
 import com.danbramos.ringprototype.items.ItemType;
 import com.danbramos.ringprototype.battle.Enemy;
 import com.danbramos.ringprototype.battle.Skill;
 import com.danbramos.ringprototype.battle.SkillType;
-import com.danbramos.ringprototype.resources.ResourceManager; // Import ResourceManager
+import com.danbramos.ringprototype.resources.ResourceManager; // Import ResourceManager interface
+import com.danbramos.ringprototype.resources.DefaultResourceManager; // Import DefaultResourceManager implementation
 import com.danbramos.ringprototype.resources.ResourceType;   // Import ResourceType
 import com.badlogic.gdx.utils.Array;
 
+/**
+ * Main game class that handles game initialization and resource management
+ */
 public class RingPrototypeGame extends Game {
     public SpriteBatch batch;
     public AssetManager assetManager;
     public PartyManager partyManager;
-    public ResourceManager resourceManager; // Add ResourceManager instance
+    public ResourceManager resourceManager;
     public Skin skin;
     public Texture characterSheet;
     public Array<Enemy> currentBattleEnemies;
@@ -34,8 +40,8 @@ public class RingPrototypeGame extends Game {
     public void create() {
         batch = new SpriteBatch();
         assetManager = new AssetManager();
-        partyManager = new PartyManager();
-        resourceManager = new ResourceManager(); // Initialize ResourceManager
+        partyManager = new DefaultPartyManager();
+        resourceManager = new DefaultResourceManager();
         currentBattleEnemies = new Array<>();
 
         // Example: Set some initial resources after ResourceManager is created
@@ -44,7 +50,6 @@ public class RingPrototypeGame extends Game {
         resourceManager.setResourceAmount(ResourceType.GOLD, 100);
         resourceManager.setResourceAmount(ResourceType.HOPE, 75);
         Gdx.app.log("RingPrototypeGame", "Initial resources: " + resourceManager.toString());
-
 
         try {
             characterSheet = new Texture(Gdx.files.internal("spritesheets/colored-transparent_packed.png"));
@@ -85,7 +90,7 @@ public class RingPrototypeGame extends Game {
         Skill legolasExplosiveArrow = new Skill("Explosive Arrow", "An arrow that explodes on impact.", SkillType.RANGED_AOE_CIRCLE, 5, "1d4", 2);
 
         // --- Initialize Party Members ---
-        Character aragorn = new Character("Aragorn", GameClass.WARRIOR);
+        GameCharacter aragorn = new Character("Aragorn", GameClass.WARRIOR);
         aragorn.setMovementRange(4);
         if (characterSheet != null) {
             aragorn.setBattleSprite(new TextureRegion(characterSheet, 27 * tileWidth, 0 * tileHeight, tileWidth, tileHeight));
@@ -102,7 +107,7 @@ public class RingPrototypeGame extends Game {
         Gdx.app.log("RingPrototypeGame", "Aragorn (Warrior) added to party. Skills: " + aragorn.getKnownSkills());
 
 
-        Character legolas = new Character("Legolas", GameClass.RANGER);
+        GameCharacter legolas = new Character("Legolas", GameClass.RANGER);
         legolas.setMovementRange(5);
         if (characterSheet != null) {
             legolas.setBattleSprite(new TextureRegion(characterSheet, 24 * tileWidth, 1 * tileHeight, tileWidth, tileHeight));

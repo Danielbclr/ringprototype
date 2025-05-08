@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.Array;
 import com.danbramos.ringprototype.RingPrototypeGame;
 import com.danbramos.ringprototype.items.Item;
 import com.danbramos.ringprototype.party.Character;
+import com.danbramos.ringprototype.party.GameCharacter;
 import com.danbramos.ringprototype.screens.PauseMenuScreen;
 
 public class InventoryScreenView {
@@ -20,7 +21,7 @@ public class InventoryScreenView {
 
     // UI Elements
     private List<DisplayableCharacter> characterListWidget; // For selecting active character
-    private Character selectedCharacter; // The character whose inventory is being managed
+    private GameCharacter selectedCharacter; // The character whose inventory is being managed
 
     private List<DisplayableItem> equippedItemsListWidget; // For selected character's equipped items
     private List<DisplayableItem> partyCarriedItemsListWidget; // All unequipped items in the party
@@ -33,19 +34,19 @@ public class InventoryScreenView {
 
     // Wrapper for characters in the character selection list
     public static class DisplayableCharacter {
-        public final Character character;
+        public final GameCharacter character;
 
-        public DisplayableCharacter(Character character) {
+        public DisplayableCharacter(GameCharacter character) {
             this.character = character;
         }
 
-        public Character getCharacter() {
+        public GameCharacter getCharacter() {
             return character;
         }
 
         @Override
         public String toString() {
-            return character != null ? character.getName() : "No Character";
+            return character != null ? character.getName() : "No character";
         }
     }
 
@@ -65,8 +66,7 @@ public class InventoryScreenView {
 
         @Override
         public String toString() {
-            if (item == null) return "";
-            return item.getName() + " [" + item.getType().getDisplayName() + "]";
+            return item != null ? item.getName() + " [" + item.getType().getDisplayName() + "]" : "No item";
         }
     }
 
@@ -107,7 +107,7 @@ public class InventoryScreenView {
         characterListWidget = new List<>(skin);
         Array<DisplayableCharacter> displayableCharacters = new Array<>();
         if (game.partyManager.getPartySize() > 0) {
-            for (Character member : game.partyManager.getMembers()) {
+            for (GameCharacter member : game.partyManager.getMembers()) {
                 displayableCharacters.add(new DisplayableCharacter(member));
             }
             characterListWidget.setItems(displayableCharacters);
@@ -206,7 +206,7 @@ public class InventoryScreenView {
                 if (itemToEquipWrapper != null && selectedCharacter != null) {
                     Item item = itemToEquipWrapper.getItem();
                     // Find original owner and remove from their inventory
-                    Character originalOwner = findItemOwner(item);
+                    GameCharacter originalOwner = findItemOwner(item);
                     if (originalOwner != null) {
                         originalOwner.removeItemFromInventory(item); // Assumes item is in inventory, not equipped
                         selectedCharacter.addItemToInventory(item); // Add to target's inventory first
@@ -257,9 +257,9 @@ public class InventoryScreenView {
         return inventoryViewRootTable;
     }
 
-    private Character findItemOwner(Item itemToFind) {
+    private GameCharacter findItemOwner(Item itemToFind) {
         if (itemToFind == null) return null;
-        for (Character member : game.partyManager.getMembers()) {
+        for (GameCharacter member : game.partyManager.getMembers()) {
             if (member.getInventory().contains(itemToFind)) {
                 return member;
             }
@@ -285,7 +285,7 @@ public class InventoryScreenView {
 
         // Populate all party's carried (unequipped) items
         Array<DisplayableItem> partyCarriedItems = new Array<>();
-        for (Character member : game.partyManager.getMembers()) {
+        for (GameCharacter member : game.partyManager.getMembers()) {
             for (Item item : member.getInventory()) { // Iterate actual inventory (carried items)
                 partyCarriedItems.add(new DisplayableItem(item));
             }

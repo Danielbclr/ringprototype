@@ -21,6 +21,7 @@ import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.danbramos.ringprototype.RingPrototypeGame;
 import com.danbramos.ringprototype.input.BattleInputHandler;
 import com.danbramos.ringprototype.party.Character;
+import com.danbramos.ringprototype.party.GameCharacter;
 import com.danbramos.ringprototype.battle.Enemy;
 import com.danbramos.ringprototype.battle.IBattleActor;
 import com.danbramos.ringprototype.battle.BattleCharacter;
@@ -115,7 +116,7 @@ public class BattleScreen implements Screen {
 
     private void initializeTurnSystem() {
         turnOrder.clear();
-        for (Character character : game.partyManager.getMembers()) {
+        for (GameCharacter character : game.partyManager.getMembers()) {
             if (character != null && character.getHealthPoints() > 0) { // Only add living characters
                 turnOrder.add(new BattleCharacter(character));
             }

@@ -17,6 +17,7 @@ import com.danbramos.ringprototype.RingPrototypeGame;
 import com.danbramos.ringprototype.battle.Skill;
 import com.danbramos.ringprototype.items.Item;
 import com.danbramos.ringprototype.party.Character;
+import com.danbramos.ringprototype.party.GameCharacter;
 import com.danbramos.ringprototype.screens.MapScreen; // Needed for back button
 
 public class PartyScreenView {
@@ -42,13 +43,13 @@ public class PartyScreenView {
     // Made public static so PartyScreen can potentially access it if needed,
     // though primarily used internally by PartyScreenView.
     public static class CharacterListItem {
-        public final Character character;
+        public final GameCharacter character;
 
-        public CharacterListItem(Character character) {
+        public CharacterListItem(GameCharacter character) {
             this.character = character;
         }
 
-        public Character getCharacter() {
+        public GameCharacter getCharacter() {
             return character;
         }
 
@@ -95,7 +96,7 @@ public class PartyScreenView {
         // --- Character List ---
         characterListWidget = new List<>(skin);
         Array<CharacterListItem> listItems = new Array<>();
-        for (Character member : game.partyManager.getMembers()) {
+        for (GameCharacter member : game.partyManager.getMembers()) {
             listItems.add(new CharacterListItem(member));
         }
         characterListWidget.setItems(listItems);
@@ -176,7 +177,7 @@ public class PartyScreenView {
         return mainLayoutTable;
     }
 
-    public void updateCharacterDetails(Character character) {
+    public void updateCharacterDetails(GameCharacter character) {
         boolean detailsVisible = character != null;
 
         noCharacterSelectedLabel.setVisible(!detailsVisible);

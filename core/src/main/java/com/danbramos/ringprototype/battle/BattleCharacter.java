@@ -2,18 +2,18 @@ package com.danbramos.ringprototype.battle;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
-import com.danbramos.ringprototype.party.Character; // The persistent character
+import com.danbramos.ringprototype.party.GameCharacter; // Use the interface
 
 import java.util.List;
 
 public class BattleCharacter implements IBattleActor {
-    private final Character sourceCharacter;
+    private final GameCharacter sourceCharacter;
     private Vector2 battleMapPosition;
     private int currentBattleHp;
     private boolean hasPerformedMajorActionThisTurn;
     // Potentially other battle-specific stats like temporary movement boosts
 
-    public BattleCharacter(Character sourceCharacter) {
+    public BattleCharacter(GameCharacter sourceCharacter) {
         this.sourceCharacter = sourceCharacter;
         this.battleMapPosition = new Vector2(sourceCharacter.getBattleMapPosition()); // Initial position
         this.currentBattleHp = sourceCharacter.getHealthPoints(); // Start battle with current HP
@@ -88,7 +88,7 @@ public class BattleCharacter implements IBattleActor {
 
     // --- BattleCharacter specific methods ---
 
-    public Character getSourceCharacter() {
+    public GameCharacter getSourceCharacter() {
         return sourceCharacter;
     }
 

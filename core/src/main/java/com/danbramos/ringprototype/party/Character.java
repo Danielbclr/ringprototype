@@ -6,13 +6,17 @@ import com.danbramos.ringprototype.battle.Skill; // Assuming Skill is a general 
 import com.danbramos.ringprototype.items.Item;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class Character {
+/**
+ * Default implementation of a character in the game world
+ */
+public class Character implements GameCharacter {
     private String name;
+    private final GameClass gameClass;
     private int level;
-    private GameClass gameClass;
 
     // Core Stats (Persistent)
     private int healthPoints; // Current health outside of battle
@@ -37,12 +41,16 @@ public class Character {
     // --- Persistent Battle-Related Setup ---
     // These are used by BattleCharacter to initialize its state
     private transient TextureRegion battleSprite;
-    private Vector2 battleMapPosition; // Default or last known starting position for battles
+    private final Vector2 battleMapPosition; // Default or last known starting position for battles
     private int movementRange;         // Base movement range
 
-    // --- Removed battle-turn-specific fields ---
-    // boolean hasMovedThisTurn; // This is now managed by BattleCharacter
-
+    /**
+     * Creates a new character with the given name and class
+     * 
+     * @param name The character's name
+     * @param gameClass The character's class
+     * @throws NullPointerException if name or gameClass is null
+     */
     public Character(String name, GameClass gameClass) {
         this.name = Objects.requireNonNull(name, "Character name cannot be null");
         this.gameClass = Objects.requireNonNull(gameClass, "Character class cannot be null");
@@ -50,13 +58,12 @@ public class Character {
         this.experiencePoints = 0;
         this.experienceToNextLevel = 100;
 
-        setDefaultStats();
-
         this.knownSkills = new ArrayList<>();
         this.inventory = new ArrayList<>();
         this.equippedItems = new ArrayList<>();
         this.battleMapPosition = new Vector2(-1, -1); // Default off-map or initial setup position
-        // this.hasMovedThisTurn = false; // Removed
+        
+        setDefaultStats();
     }
 
     private void setDefaultStats() {
@@ -74,106 +81,115 @@ public class Character {
         this.movementRange = 3; // Default base movement range
     }
 
-    // --- Getters and Setters for persistent battle setup ---
+    // --- Implementation of GameCharacter interface ---
+    
+    @Override
     public TextureRegion getBattleSprite() {
         return battleSprite;
     }
 
+    @Override
     public void setBattleSprite(TextureRegion battleSprite) {
         this.battleSprite = battleSprite;
     }
 
+    @Override
     public Vector2 getBattleMapPosition() {
-        return battleMapPosition;
+        // Return a copy to prevent external modification
+        return new Vector2(battleMapPosition);
     }
 
+    @Override
     public void setBattleMapPosition(float x, float y) {
-        if (this.battleMapPosition == null) {
-            this.battleMapPosition = new Vector2();
-        }
         this.battleMapPosition.set(x, y);
     }
 
+    @Override
     public int getMovementRange() {
         return movementRange;
     }
 
+    @Override
     public void setMovementRange(int movementRange) {
         this.movementRange = movementRange;
     }
-
-    // --- Removed battle-turn-specific getters/setters ---
-    // public boolean hasMovedThisTurn() { ... } // Removed
-    // public void setHasMovedThisTurn(boolean hasMovedThisTurn) { ... } // Removed
-
-    // --- Existing Getters ---
+    
+    @Override
     public String getName() {
         return name;
     }
 
+    @Override
     public int getLevel() {
         return level;
     }
 
+    @Override
     public GameClass getGameClass() {
         return gameClass;
     }
 
+    @Override
     public int getHealthPoints() {
         return healthPoints;
     }
 
-    /**
-     * Sets the character's current health points.
-     * This is typically called after a battle or by other game events
-     * that affect persistent health.
-     * @param healthPoints The new health points value.
-     */
+    @Override
     public void setHealthPoints(int healthPoints) {
         this.healthPoints = Math.max(0, Math.min(healthPoints, this.maxHealthPoints));
     }
 
+    @Override
     public int getMaxHealthPoints() {
         return maxHealthPoints;
     }
 
+    @Override
     public int getManaPoints() {
         return manaPoints;
     }
 
+    @Override
     public void setManaPoints(int manaPoints) {
         this.manaPoints = Math.max(0, Math.min(manaPoints, this.maxManaPoints));
     }
 
+    @Override
     public int getMaxManaPoints() {
         return maxManaPoints;
     }
 
+    @Override
     public int getExperiencePoints() {
         return experiencePoints;
     }
 
+    @Override
     public int getExperienceToNextLevel() {
         return experienceToNextLevel;
     }
 
+    @Override
     public List<Skill> getKnownSkills() {
-        return new ArrayList<>(knownSkills);
+        return Collections.unmodifiableList(knownSkills);
     }
 
+    @Override
     public List<Item> getInventory() {
-        return new ArrayList<>(inventory);
+        return Collections.unmodifiableList(inventory);
     }
 
+    @Override
     public List<Item> getEquippedItems() {
-        return new ArrayList<>(equippedItems);
+        return Collections.unmodifiableList(equippedItems);
     }
-
-    // --- Effective Stat Getters (based on persistent stats and equipment) ---
+    
+    @Override
     public int getBaseStrength() {
         return strength;
     }
 
+    @Override
     public int getStrength() {
         int effectiveStrength = this.strength;
         for (Item item : equippedItems) {
@@ -182,14 +198,17 @@ public class Character {
         return effectiveStrength;
     }
 
-    public void setStrength(int strength) { // Sets base strength
+    @Override
+    public void setStrength(int strength) {
         this.strength = strength;
     }
 
+    @Override
     public int getBaseDexterity() {
         return dexterity;
     }
 
+    @Override
     public int getDexterity() {
         int effectiveDexterity = this.dexterity;
         for (Item item : equippedItems) {
@@ -198,13 +217,17 @@ public class Character {
         return effectiveDexterity;
     }
 
-    public void setDexterity(int dexterity) { // Sets base dexterity
+    @Override
+    public void setDexterity(int dexterity) {
         this.dexterity = dexterity;
     }
 
+    @Override
     public int getBaseIntelligence() {
         return intelligence;
     }
+    
+    @Override
     public int getIntelligence() {
         int effectiveIntelligence = this.intelligence;
         for (Item item : equippedItems) {
@@ -213,14 +236,17 @@ public class Character {
         return effectiveIntelligence;
     }
 
-    public void setIntelligence(int intelligence) { // Sets base intelligence
+    @Override
+    public void setIntelligence(int intelligence) {
         this.intelligence = intelligence;
     }
 
+    @Override
     public int getBaseConstitution() {
         return constitution;
     }
 
+    @Override
     public int getConstitution() {
         int effectiveConstitution = this.constitution;
         for (Item item : equippedItems) {
@@ -229,14 +255,33 @@ public class Character {
         return effectiveConstitution;
     }
 
-    public void setConstitution(int constitution) { // Sets base constitution
+    @Override
+    public void setConstitution(int constitution) {
         this.constitution = constitution;
-        // Optionally, re-calculate maxHealthPoints if base constitution changes
-        // this.maxHealthPoints = 50 + (getConstitution() * 5);
-        // this.healthPoints = Math.min(this.healthPoints, this.maxHealthPoints);
+        // Re-calculate health when constitution changes
+        updateMaxHealthPoints();
+    }
+    
+    /**
+     * Updates the character's maximum health points based on constitution
+     */
+    private void updateMaxHealthPoints() {
+        int oldMax = this.maxHealthPoints;
+        this.maxHealthPoints = 10 + (this.getConstitution() * 1);
+        
+        // Adjust current health proportionally if max health changed
+        if (oldMax > 0 && oldMax != this.maxHealthPoints) {
+            this.healthPoints = Math.min(this.maxHealthPoints, 
+                                      (int)(((float)this.healthPoints / oldMax) * this.maxHealthPoints));
+        }
     }
 
-    public int getBaseWisdom() { return wisdom; }
+    @Override
+    public int getBaseWisdom() { 
+        return wisdom; 
+    }
+    
+    @Override
     public int getWisdom() {
         int effectiveWisdom = this.wisdom;
         for (Item item : equippedItems) {
@@ -244,9 +289,18 @@ public class Character {
         }
         return effectiveWisdom;
     }
-    public void setWisdom(int wisdom) { this.wisdom = wisdom; }
+    
+    @Override
+    public void setWisdom(int wisdom) { 
+        this.wisdom = wisdom; 
+    }
 
-    public int getBaseCharisma() { return charisma; }
+    @Override
+    public int getBaseCharisma() { 
+        return charisma; 
+    }
+    
+    @Override
     public int getCharisma() {
         int effectiveCharisma = this.charisma;
         for (Item item : equippedItems) {
@@ -254,125 +308,126 @@ public class Character {
         }
         return effectiveCharisma;
     }
-    public void setCharisma(int charisma) { this.charisma = charisma; }
+    
+    @Override
+    public void setCharisma(int charisma) { 
+        this.charisma = charisma; 
+    }
 
-    // --- Basic Mutators / Logic ---
+    @Override
     public void setName(String name) {
-        this.name = name;
+        this.name = Objects.requireNonNull(name, "Character name cannot be null");
     }
 
+    @Override
     public void learnSkill(Skill skill) {
-        if (skill != null && !this.knownSkills.contains(skill)) {
-            this.knownSkills.add(skill);
+        if (skill != null && !knownSkills.contains(skill)) {
+            knownSkills.add(skill);
         }
     }
 
+    @Override
     public void addItemToInventory(Item item) {
-        if (item != null && !this.inventory.contains(item) && !this.equippedItems.contains(item)) {
-            this.inventory.add(item);
+        if (item != null) {
+            inventory.add(item);
         }
     }
 
+    @Override
     public boolean removeItemFromInventory(Item item) {
-        if (isEquipped(item)) {
-            return false; // Cannot remove equipped items directly from inventory list
+        if (item != null) {
+            if (equippedItems.contains(item)) {
+                unequipItem(item);
+            }
+            return inventory.remove(item);
         }
-        return this.inventory.remove(item);
+        return false;
     }
 
+    @Override
     public boolean equipItem(Item item) {
         if (item != null && inventory.contains(item) && !equippedItems.contains(item)) {
-            // TODO: Add more complex logic: e.g., checking item type, slots, class restrictions
-            if (inventory.remove(item)) {
-                equippedItems.add(item);
-                return true;
-            }
+            equippedItems.add(item);
+            updateMaxHealthPoints(); // Stats may have changed
+            return true;
         }
         return false;
     }
 
+    @Override
     public boolean unequipItem(Item item) {
         if (item != null && equippedItems.contains(item)) {
-            if (equippedItems.remove(item)) {
-                inventory.add(item); // Add back to general inventory
-                return true;
-            }
+            equippedItems.remove(item);
+            updateMaxHealthPoints(); // Stats may have changed
+            return true;
         }
         return false;
     }
 
+    @Override
     public boolean isEquipped(Item item) {
         return item != null && equippedItems.contains(item);
     }
 
-    /**
-     * Applies persistent damage to the character (e.g., from traps, poison outside combat,
-     * or when applying end-of-battle results).
-     * @param amount The amount of damage to take.
-     */
+    @Override
     public void takeDamage(int amount) {
-        if (amount <= 0) return;
-        this.healthPoints -= amount;
-        if (this.healthPoints < 0) {
-            this.healthPoints = 0;
+        if (amount > 0) {
+            this.healthPoints = Math.max(0, this.healthPoints - amount);
+        }
+    }
+
+    @Override
+    public void heal(int amount) {
+        if (amount > 0) {
+            this.healthPoints = Math.min(this.maxHealthPoints, this.healthPoints + amount);
+        }
+    }
+
+    @Override
+    public void gainExperience(int amount) {
+        if (amount > 0) {
+            this.experiencePoints += amount;
+            if (this.experiencePoints >= this.experienceToNextLevel) {
+                levelUp();
+            }
         }
     }
 
     /**
-     * Heals the character persistently.
-     * @param amount The amount to heal.
+     * Increases the character's level
      */
-    public void heal(int amount) {
-        if (amount <= 0) return;
-        this.healthPoints += amount;
-        if (this.healthPoints > this.maxHealthPoints) {
-            this.healthPoints = this.maxHealthPoints;
-        }
-    }
-
-    public void gainExperience(int amount) {
-        if (amount <= 0) return;
-        this.experiencePoints += amount;
-        while (this.experiencePoints >= this.experienceToNextLevel) {
-            levelUp();
-        }
-    }
-
     private void levelUp() {
         this.level++;
         this.experiencePoints -= this.experienceToNextLevel;
         this.experienceToNextLevel = calculateNextLevelXP();
-
-        // Improve base stats on level up
-        this.strength +=1;
+        
+        // Improve stats (this is a simple approach - could be more sophisticated)
+        this.strength += 1;
+        this.dexterity += 1;
+        this.intelligence += 1;
         this.constitution += 1;
-
-        // Recalculate max HP/MP based on new base stats (or effective stats if preferred)
-        this.maxHealthPoints = 50 + (getConstitution() * 5); // Using effective constitution
-        this.healthPoints = this.maxHealthPoints; // Fully heal on level up (common practice)
-
-        this.maxManaPoints = 20 + (getIntelligence() * 3); // Using effective intelligence
+        this.wisdom += 1;
+        this.charisma += 1;
+        
+        // Update derived stats
+        updateMaxHealthPoints();
+        this.maxManaPoints = 20 + (this.intelligence * 3);
+        
+        // Heal to full on level up
+        this.healthPoints = this.maxHealthPoints;
         this.manaPoints = this.maxManaPoints;
     }
 
+    /**
+     * Calculates the experience needed for the next level
+     * @return The experience needed
+     */
     private int calculateNextLevelXP() {
-        return (int) (this.experienceToNextLevel * 1.5);
+        return 100 * this.level;
     }
 
     @Override
     public String toString() {
-        // Updated to reflect that this is the persistent character state
-        return "Character{" +
-            "name='" + name + '\'' +
-            ", level=" + level +
-            ", gameClass=" + gameClass.getDisplayName() + // Assuming GameClass has getDisplayName
-            ", HP=" + healthPoints + "/" + getMaxHealthPoints() +
-            ", Str=" + getStrength() + // Shows effective strength based on equipment
-            ", MoveRange=" + movementRange +
-            ", XP=" + experiencePoints + "/" + experienceToNextLevel +
-            ", skills=" + knownSkills.size() +
-            ", inventory=" + inventory.size() +
-            ", equipped=" + equippedItems.size() +
-            '}';
+        return name + " (Lvl " + level + " " + gameClass + ")";
     }
 }
