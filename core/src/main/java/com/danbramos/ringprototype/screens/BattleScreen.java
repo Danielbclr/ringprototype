@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
@@ -23,11 +24,18 @@ import com.danbramos.ringprototype.input.BattleInputHandler;
 import com.danbramos.ringprototype.party.Character;
 import com.danbramos.ringprototype.party.GameCharacter;
 import com.danbramos.ringprototype.battle.Enemy;
+import com.danbramos.ringprototype.battle.EnemyData;
 import com.danbramos.ringprototype.battle.IBattleActor;
 import com.danbramos.ringprototype.battle.BattleCharacter;
 import com.danbramos.ringprototype.battle.Skill;
+import com.danbramos.ringprototype.battle.SkillType;
+import com.danbramos.ringprototype.quests.QuestManager;
 import com.danbramos.ringprototype.resources.ResourceType; // Import ResourceType for rewards
 import com.danbramos.ringprototype.screens.ui.BattleUiManager;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class BattleScreen implements Screen {
     private final RingPrototypeGame game;
@@ -44,6 +52,17 @@ public class BattleScreen implements Screen {
 
     private static final float VIEWPORT_WIDTH_IN_TILES = 20f;
     private static final float VIEWPORT_HEIGHT_IN_TILES = 15f;
+    
+    // Battle Map Constants
+    private static final int PLAYER_SIDE_X_MIN = 1;
+    private static final int PLAYER_SIDE_X_MAX = 5;
+    private static final int ENEMY_SIDE_X_MIN = 10;
+    private static final int ENEMY_SIDE_X_MAX = 14;
+    private static final int MIN_ENEMIES = 2;
+    private static final int MAX_ENEMIES = 3;
+    private static final String[] ENEMY_TYPES = {"orc_grunt", "goblin_archer", "warg"};
+    
+    private Random random = new Random();
 
     // Turn Management
     private Array<IBattleActor> turnOrder;
@@ -68,6 +87,14 @@ public class BattleScreen implements Screen {
 
     public int getMapHeightInTiles() {
         return mapHeightInTiles;
+    }
+
+    public int getTileWidth() {
+        return tileWidth;
+    }
+
+    public int getTileHeight() {
+        return tileHeight;
     }
 
     @Override
@@ -110,8 +137,168 @@ public class BattleScreen implements Screen {
         camera.position.set(mapPixelWidth / 2f, mapPixelHeight / 2f, 0);
         camera.zoom = Math.max(1f, Math.max(mapPixelWidth / camera.viewportWidth, mapPixelHeight / camera.viewportHeight));
         camera.update();
+        
+        // Generate random enemies and positions
+        generateRandomEncounter();
 
         initializeTurnSystem();
+    }
+    
+    /**
+     * Generates a random battle encounter with 2-3 enemies
+     * and positions all actors randomly on the battle map
+     */
+    private void generateRandomEncounter() {
+        // Clear previous battle state
+        game.currentBattleEnemies.clear();
+        
+        // 1. Generate random enemy positions on the right side
+        int numEnemies = MIN_ENEMIES + random.nextInt(MAX_ENEMIES - MIN_ENEMIES + 1);
+        
+        // Create a list of occupied positions to avoid overlap
+        List<Vector2> occupiedPositions = new ArrayList<>();
+        
+        // 2. Generate random enemies
+        for (int i = 0; i < numEnemies; i++) {
+            generateRandomEnemy(occupiedPositions);
+        }
+        
+        // 3. Randomly place player characters on the left side
+        randomlyPositionPartyMembers(occupiedPositions);
+    }
+    
+    /**
+     * Generates a random enemy and adds it to the battle
+     */
+    private void generateRandomEnemy(List<Vector2> occupiedPositions) {
+        if (game.characterSheet == null) {
+            Gdx.app.error("BattleScreen", "Cannot create enemies, character sheet is null");
+            return;
+        }
+        
+        // Get random position on right side of map
+        Vector2 position = getRandomUnoccupiedPosition(
+            ENEMY_SIDE_X_MIN, ENEMY_SIDE_X_MAX, 
+            1, mapHeightInTiles - 2, 
+            occupiedPositions
+        );
+        
+        // Select a random enemy type from the enemy IDs array
+        String enemyId = ENEMY_TYPES[random.nextInt(ENEMY_TYPES.length)];
+        
+        // Create the enemy using the EnemyData system
+        Enemy enemy = EnemyData.getInstance().createEnemy(enemyId, game.characterSheet, position.x, position.y);
+        
+        if (enemy == null) {
+            // Fallback to the old method if EnemyData failed to create the enemy
+            Gdx.app.error("BattleScreen", "Failed to create enemy from ID: " + enemyId + ". Using fallback method.");
+            
+            // Create enemy with appropriate sprite and stats (fallback)
+            int enemySpriteX, enemySpriteY;
+            int hp;
+            String damageRoll;
+            int moveRange;
+            String enemyType;
+            
+            switch (enemyId) {
+                case "warg":
+                    enemySpriteX = 30;
+                    enemySpriteY = 3;
+                    hp = 12;
+                    damageRoll = "1d8";
+                    moveRange = 5;
+                    enemyType = "Warg";
+                    break;
+                case "goblin_archer":
+                    enemySpriteX = 25;
+                    enemySpriteY = 1;
+                    hp = 6;
+                    damageRoll = "1d4";
+                    moveRange = 4;
+                    enemyType = "Goblin Archer";
+                    break;
+                case "orc_grunt":
+                default:
+                    enemySpriteX = 27;
+                    enemySpriteY = 2;
+                    hp = 8;
+                    damageRoll = "1d6";
+                    moveRange = 3;
+                    enemyType = "Orc Grunt";
+                    break;
+            }
+            
+            TextureRegion enemySprite = new TextureRegion(
+                game.characterSheet,
+                enemySpriteX * tileWidth,
+                enemySpriteY * tileHeight,
+                tileWidth,
+                tileHeight
+            );
+            
+            enemy = new Enemy(
+                enemyType, 
+                hp, 
+                damageRoll, 
+                enemySprite, 
+                position.x, 
+                position.y, 
+                moveRange
+            );
+        }
+        
+        game.currentBattleEnemies.add(enemy);
+        occupiedPositions.add(position);
+        
+        Gdx.app.log("BattleScreen", enemy.getName() + " added at position " + position);
+    }
+    
+    /**
+     * Randomly positions party members on the left side of the battlefield
+     */
+    private void randomlyPositionPartyMembers(List<Vector2> occupiedPositions) {
+        // For each party member, find a random position on the left side
+        for (GameCharacter character : game.partyManager.getMembers()) {
+            if (character != null) {
+                Vector2 position = getRandomUnoccupiedPosition(
+                    PLAYER_SIDE_X_MIN, PLAYER_SIDE_X_MAX,
+                    1, mapHeightInTiles - 2,
+                    occupiedPositions
+                );
+                
+                // Set the character's battle position to this random position
+                character.setBattleMapPosition(position.x, position.y);
+                occupiedPositions.add(position);
+                
+                Gdx.app.log("BattleScreen", character.getName() + " positioned at " + position);
+            }
+        }
+    }
+    
+    /**
+     * Gets a random unoccupied position within the given bounds
+     */
+    private Vector2 getRandomUnoccupiedPosition(int xMin, int xMax, int yMin, int yMax, List<Vector2> occupiedPositions) {
+        Vector2 position;
+        boolean validPosition;
+        
+        // Try to find an unoccupied position
+        do {
+            int x = xMin + random.nextInt(xMax - xMin + 1);
+            int y = yMin + random.nextInt(yMax - yMin + 1);
+            position = new Vector2(x, y);
+            
+            // Check if this position is already occupied
+            validPosition = true;
+            for (Vector2 occupied : occupiedPositions) {
+                if (occupied.epsilonEquals(position)) {
+                    validPosition = false;
+                    break;
+                }
+            }
+        } while (!validPosition);
+        
+        return position;
     }
 
     private void initializeTurnSystem() {
@@ -257,11 +444,12 @@ public class BattleScreen implements Screen {
         if(playersWon) {
             Gdx.app.log("BattleScreen", "PLAYER VICTORY!");
             uiManager.updateTurnInfo(null); // Clear turn info
+            
+            // Display victory message in the battle log
+            uiManager.updateBattleLog("VICTORY! Your party is triumphant!");
+            
             // Update UI to show "Victory!"
-            // You might want a dedicated label for this in BattleUiManager
-            // For now, let's assume uiManager.updateTurnInfo can show a custom message
             if (uiManager != null) { // Check if uiManager is initialized
-                // A bit of a hack, ideally BattleUiManager has a method for this
                 if (uiManager.turnInfoLabel != null) uiManager.turnInfoLabel.setText("VICTORY!");
             }
 
@@ -277,12 +465,20 @@ public class BattleScreen implements Screen {
                 }
             }
 
-            // Award resources
-            int goldReward = 50 + (int)(Math.random() * 51); // 50-100 gold
-            int foodReward = 2 + (int)(Math.random() * 4);   // 2-5 food
+            // Award resources based on number and type of enemies defeated
+            int baseGoldReward = 30;
+            int baseFoodReward = 1;
+            int enemyCount = game.currentBattleEnemies.size;
+            
+            int goldReward = baseGoldReward * enemyCount + random.nextInt(20);
+            int foodReward = baseFoodReward + random.nextInt(enemyCount + 1);
+            
             game.resourceManager.addResource(ResourceType.GOLD, goldReward);
             game.resourceManager.addResource(ResourceType.FOOD, foodReward);
             Gdx.app.log("BattleScreen", "Awarded " + goldReward + " Gold and " + foodReward + " Food.");
+            
+            // Display rewards in battle log
+            uiManager.updateBattleLog("VICTORY!\nYour party gained " + goldReward + " Gold and " + foodReward + " Food.\nReturning to map in 3 seconds...");
 
 
             // Transition back to MapScreen after a delay
@@ -294,6 +490,10 @@ public class BattleScreen implements Screen {
             }, 3); // 3 second delay
         } else {
             Gdx.app.log("BattleScreen", "PLAYER DEFEAT - GAME OVER!");
+            
+            // Display defeat message in the battle log
+            uiManager.updateBattleLog("DEFEAT! Your party has fallen in battle...");
+            
             if (uiManager != null) {
                 if (uiManager.turnInfoLabel != null) uiManager.turnInfoLabel.setText("GAME OVER!");
             }
@@ -347,15 +547,19 @@ public class BattleScreen implements Screen {
         }
     }
 
-    public void handleCharacterMove(BattleCharacter mover, float tileX, float tileY) {
+    public void handleCharacterMove(BattleCharacter mover, float tileX, float tileY, int movementCost) {
         if (battleEnded) return;
-        Gdx.app.log("BattleScreen", mover.getName() + " moving to " + tileX + "," + tileY);
+        Gdx.app.log("BattleScreen", mover.getName() + " moving to " + tileX + "," + tileY + " (cost: " + movementCost + ")");
         mover.setBattleMapPosition(tileX, tileY);
-        mover.setHasPerformedMajorAction(true);
-        inputHandler.clearAllHighlights();
+        
+        // Deduct movement points used
+        mover.useMovement(movementCost);
+        
+        // Only set major action to true if character has used a skill
+        // Movement alone no longer counts as a major action
+        
         uiManager.updateSkillButtons(mover);
         uiManager.updateTurnInfo(mover);
-        inputHandler.resetState();
     }
 
     public void executeSingleTargetSkill(BattleCharacter caster, Skill skill, IBattleActor target) {
@@ -363,15 +567,44 @@ public class BattleScreen implements Screen {
         Gdx.app.log("BattleScreen", caster.getName() + " uses " + skill.getName() + " on " + target.getName());
         int damage = skill.rollDamage();
         Gdx.app.log("BattleScreen", skill.getName() + " deals " + damage + " damage.");
+        
+        // Update the battle log with this action
+        String battleLog = caster.getName() + " uses " + skill.getName() + " on " + target.getName() + "\n" +
+                          "Deals " + damage + " damage!";
+        uiManager.updateBattleLog(battleLog);
+        
         target.takeDamage(damage);
 
+        // Set the major action flag but don't reset the input handler state
         caster.setHasPerformedMajorAction(true);
-        inputHandler.resetState();
+        
+        // Clear skill targeting highlights but recalculate movement if there's still movement points left
+        inputHandler.clearSkillHighlights();
+        if (caster.getRemainingMovement() > 0) {
+            inputHandler.calculateMovementReachableTiles(caster);
+            inputHandler.setActionState(BattleInputHandler.ActionState.MOVING);
+        } else {
+            inputHandler.clearAllHighlights();
+            inputHandler.setActionState(BattleInputHandler.ActionState.IDLE);
+        }
+        
         uiManager.updateSkillButtons(caster);
         uiManager.updateTurnInfo(caster);
 
         if (!target.isAlive()) {
             Gdx.app.log("BattleScreen", target.getName() + " has been defeated!");
+            // Update battle log
+            uiManager.updateBattleLog(target.getName() + " has been defeated!");
+            
+            // Update quest objectives if an enemy was killed
+            if (target instanceof Enemy) {
+                // Get the enemy type from the name
+                String enemyType = target.getName().toLowerCase().replace(" ", "_");
+                
+                // Update kill objectives for this enemy type
+                QuestManager.getInstance().updateKillObjectives(enemyType);
+                Gdx.app.log("BattleScreen", "Updated quest kill objectives for: " + enemyType);
+            }
         }
         // Check for battle end after action
         if(isBattleOver()){
@@ -382,6 +615,11 @@ public class BattleScreen implements Screen {
     public void executeAoeSkill(BattleCharacter caster, Skill skill, Vector2 centerTile) {
         if (battleEnded) return;
         Gdx.app.log("BattleScreen", caster.getName() + " uses " + skill.getName() + " centered at " + centerTile);
+
+        // Start building the battle log
+        StringBuilder battleLog = new StringBuilder(caster.getName() + " uses " + skill.getName() + "!\n");
+        int totalDamage = 0;
+        int entitiesHit = 0;
 
         Array<Vector2> aoeTiles = new Array<>();
         for (int x = 0; x < mapWidthInTiles; x++) {
@@ -400,16 +638,48 @@ public class BattleScreen implements Screen {
                     int damage = skill.rollDamage();
                     Gdx.app.log("BattleScreen", skill.getName() + " hits " + victim.getName() + " for " + damage + " damage.");
                     victim.takeDamage(damage);
+                    
+                    totalDamage += damage;
+                    entitiesHit++;
+                    
                     if (!victim.isAlive()) {
                         Gdx.app.log("BattleScreen", victim.getName() + " has been defeated by AoE!");
+                        battleLog.append(victim.getName() + " has been defeated!\n");
+                        
+                        // Update quest objectives if an enemy was killed
+                        if (victim instanceof Enemy) {
+                            // Get the enemy type from the name
+                            String enemyType = victim.getName().toLowerCase().replace(" ", "_");
+                            
+                            // Update kill objectives for this enemy type
+                            QuestManager.getInstance().updateKillObjectives(enemyType);
+                            Gdx.app.log("BattleScreen", "Updated quest kill objectives for: " + enemyType);
                     }
                 }
             }
         }
+        }
+        
+        // Complete battle log
+        battleLog.append("Hit " + entitiesHit + " targets for " + totalDamage + " total damage!");
+        uiManager.updateBattleLog(battleLog.toString());
+        
+        // Set the major action flag but don't reset the input handler state
         caster.setHasPerformedMajorAction(true);
-        inputHandler.resetState();
+        
+        // Clear skill targeting highlights but recalculate movement if there's still movement points left
+        inputHandler.clearSkillHighlights();
+        if (caster.getRemainingMovement() > 0) {
+            inputHandler.calculateMovementReachableTiles(caster);
+            inputHandler.setActionState(BattleInputHandler.ActionState.MOVING);
+        } else {
+            inputHandler.clearAllHighlights();
+            inputHandler.setActionState(BattleInputHandler.ActionState.IDLE);
+        }
+        
         uiManager.updateSkillButtons(caster);
         uiManager.updateTurnInfo(caster);
+        
         // Check for battle end after action
         if(isBattleOver()){
             handleBattleEnd();

@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Skill Schema",
+  "description": "Schema for LOTR roguelike character skills",
+  "type": "object",
+  "required": ["skills"],
+  "properties": {
+    "skills": {
+      "type": "array",
+      "description": "List of all available skills in the game",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "description", "skillType", "range", "damageFormula"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the skill"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the skill"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what the skill does"
+          },
+          "skillType": {
+            "type": "string",
+            "description": "Type of skill (melee, ranged, etc.)",
+            "enum": ["MELEE_ATTACK", "RANGED_SINGLE_TARGET", "RANGED_AOE_CIRCLE", "SUPPORT", "HEAL"]
+          },
+          "range": {
+            "type": "integer",
+            "description": "Range of the skill in tiles",
+            "minimum": 1
+          },
+          "damageFormula": {
+            "type": "string",
+            "description": "Dice notation for damage (e.g., '1d8', '2d6+2')"
+          },
+          "aoeRadius": {
+            "type": "integer",
+            "description": "Radius for area of effect skills (0 for single target)",
+            "default": 0
+          },
+          "manaCost": {
+            "type": "integer",
+            "description": "Amount of mana/energy required to use the skill",
+            "default": 0
+          },
+          "cooldown": {
+            "type": "integer",
+            "description": "Number of turns before the skill can be used again",
+            "default": 0
+          },
+          "requiredClass": {
+            "type": "string",
+            "description": "Class required to use this skill (if any)",
+            "enum": ["WARRIOR", "RANGER", "WIZARD", "HOBBIT", "ANY"]
+          },
+          "requiredLevel": {
+            "type": "integer",
+            "description": "Minimum level required to use this skill",
+            "default": 1
+          },
+          "statusEffects": {
+            "type": "array",
+            "description": "Status effects that may be applied by this skill",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "Type of status effect",
+                  "enum": ["BURN", "POISON", "STUN", "SLOW", "BLEED"]
+                },
+                "chance": {
+                  "type": "number",
+                  "description": "Chance to apply the effect (0-1)",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "duration": {
+                  "type": "integer",
+                  "description": "Duration of the effect in turns",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+} 

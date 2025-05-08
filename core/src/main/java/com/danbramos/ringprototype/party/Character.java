@@ -63,9 +63,41 @@ public class Character implements GameCharacter {
         this.equippedItems = new ArrayList<>();
         this.battleMapPosition = new Vector2(-1, -1); // Default off-map or initial setup position
         
-        setDefaultStats();
+        initializeFromClassDefinition();
     }
 
+    /**
+     * Initialize character stats from class definition
+     */
+    private void initializeFromClassDefinition() {
+        // Get the class definition from ClassData
+        ClassData.ClassDefinition classDef = ClassData.getInstance().getClassDefinition(gameClass);
+        
+        if (classDef != null) {
+            // Set stats from class definition
+            this.strength = classDef.getBaseStats().getOrDefault("strength", 6);
+            this.dexterity = classDef.getBaseStats().getOrDefault("dexterity", 6);
+            this.intelligence = classDef.getBaseStats().getOrDefault("intelligence", 6);
+            this.constitution = classDef.getBaseStats().getOrDefault("constitution", 6);
+            this.wisdom = classDef.getBaseStats().getOrDefault("wisdom", 6);
+            this.charisma = classDef.getBaseStats().getOrDefault("charisma", 6);
+            
+            this.maxHealthPoints = classDef.getStartingHealth();
+            this.healthPoints = this.maxHealthPoints;
+            this.maxManaPoints = classDef.getStartingMana();
+            this.manaPoints = this.maxManaPoints;
+            this.movementRange = classDef.getMovementRange();
+            
+            // TODO: Add starting skills and items once those systems are fully implemented
+        } else {
+            // Fall back to default stats if class definition not found
+            setDefaultStats();
+        }
+    }
+    
+    /**
+     * Default stats if class definition is not found
+     */
     private void setDefaultStats() {
         this.strength = 6;
         this.dexterity = 6;
@@ -113,7 +145,7 @@ public class Character implements GameCharacter {
     public void setMovementRange(int movementRange) {
         this.movementRange = movementRange;
     }
-    
+
     @Override
     public String getName() {
         return name;
@@ -183,7 +215,7 @@ public class Character implements GameCharacter {
     public List<Item> getEquippedItems() {
         return Collections.unmodifiableList(equippedItems);
     }
-    
+
     @Override
     public int getBaseStrength() {
         return strength;
@@ -273,7 +305,7 @@ public class Character implements GameCharacter {
         if (oldMax > 0 && oldMax != this.maxHealthPoints) {
             this.healthPoints = Math.min(this.maxHealthPoints, 
                                       (int)(((float)this.healthPoints / oldMax) * this.maxHealthPoints));
-        }
+    }
     }
 
     @Override
@@ -338,18 +370,18 @@ public class Character implements GameCharacter {
         if (item != null) {
             if (equippedItems.contains(item)) {
                 unequipItem(item);
-            }
-            return inventory.remove(item);
         }
+            return inventory.remove(item);
+    }
         return false;
     }
 
     @Override
     public boolean equipItem(Item item) {
         if (item != null && inventory.contains(item) && !equippedItems.contains(item)) {
-            equippedItems.add(item);
+                equippedItems.add(item);
             updateMaxHealthPoints(); // Stats may have changed
-            return true;
+                return true;
         }
         return false;
     }
@@ -359,7 +391,7 @@ public class Character implements GameCharacter {
         if (item != null && equippedItems.contains(item)) {
             equippedItems.remove(item);
             updateMaxHealthPoints(); // Stats may have changed
-            return true;
+                return true;
         }
         return false;
     }
@@ -386,9 +418,9 @@ public class Character implements GameCharacter {
     @Override
     public void gainExperience(int amount) {
         if (amount > 0) {
-            this.experiencePoints += amount;
+        this.experiencePoints += amount;
             if (this.experiencePoints >= this.experienceToNextLevel) {
-                levelUp();
+            levelUp();
             }
         }
     }
@@ -397,25 +429,26 @@ public class Character implements GameCharacter {
      * Increases the character's level
      */
     private void levelUp() {
-        this.level++;
-        this.experiencePoints -= this.experienceToNextLevel;
-        this.experienceToNextLevel = calculateNextLevelXP();
+        level++;
         
-        // Improve stats (this is a simple approach - could be more sophisticated)
-        this.strength += 1;
-        this.dexterity += 1;
-        this.intelligence += 1;
-        this.constitution += 1;
-        this.wisdom += 1;
-        this.charisma += 1;
+        // Get class definition to apply level-up bonuses
+        ClassData.ClassDefinition classDef = ClassData.getInstance().getClassDefinition(gameClass);
         
-        // Update derived stats
-        updateMaxHealthPoints();
-        this.maxManaPoints = 20 + (this.intelligence * 3);
+        if (classDef != null) {
+            maxHealthPoints += classDef.getHealthPerLevel();
+            maxManaPoints += classDef.getManaPerLevel();
+        } else {
+            // Default level-up values if class definition not found
+            maxHealthPoints += 5;
+            maxManaPoints += 3;
+        }
         
-        // Heal to full on level up
-        this.healthPoints = this.maxHealthPoints;
-        this.manaPoints = this.maxManaPoints;
+        // Restore health and mana on level up
+        healthPoints = maxHealthPoints;
+        manaPoints = maxManaPoints;
+        
+        // Calculate experience needed for next level
+        experienceToNextLevel = calculateNextLevelXP();
     }
 
     /**

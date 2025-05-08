@@ -1,0 +1,40 @@
+{
+  "id": "warg",
+  "name": "Warg",
+  "description": "A huge, demonic wolf-like creature. Wargs are fast, agile, and have vicious claws and teeth.",
+  "maxHp": 12,
+  "damageRoll": "1d8",
+  "spriteInfo": {
+    "spriteSheetX": 30,
+    "spriteSheetY": 3
+  },
+  "movementRange": 5,
+  "aiType": "AGGRESSIVE",
+  "skills": [
+    {
+      "name": "Bite",
+      "description": "A powerful bite from the warg's massive jaws.",
+      "type": "MELEE_ATTACK",
+      "range": 1,
+      "damageRoll": "1d8"
+    },
+    {
+      "name": "Pounce",
+      "description": "The warg leaps at its target, covering ground quickly.",
+      "type": "MELEE_ATTACK",
+      "range": 2,
+      "damageRoll": "1d6+1"
+    }
+  ],
+  "dropTable": [
+    {
+      "itemId": "warg_pelt",
+      "chance": 0.7
+    },
+    {
+      "itemId": "warg_fang",
+      "chance": 0.4
+    }
+  ],
+  "experienceValue": 30
+} 

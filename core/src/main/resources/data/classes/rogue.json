@@ -1,0 +1,27 @@
+{
+  "id": "rogue",
+  "displayName": "Rogue",
+  "description": "A cunning operative, excelling in stealth and precision. Rogues strike from the shadows, using critical hits and various tricks.",
+  "baseStats": {
+    "strength": 5,
+    "dexterity": 9,
+    "intelligence": 6,
+    "constitution": 5,
+    "wisdom": 5,
+    "charisma": 6
+  },
+  "startingHealth": 10,
+  "startingMana": 15,
+  "movementRange": 4,
+  "healthPerLevel": 4,
+  "manaPerLevel": 3,
+  "startingSkills": [
+    "backstab",
+    "stealth"
+  ],
+  "startingItems": [
+    "dagger",
+    "leather_armor",
+    "thieves_tools"
+  ]
+} 

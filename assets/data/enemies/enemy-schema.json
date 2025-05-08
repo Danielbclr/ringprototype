@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the enemy"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the enemy"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the enemy, its background and abilities"
+    },
+    "maxHp": {
+      "type": "integer",
+      "description": "Maximum health points",
+      "minimum": 1
+    },
+    "damageRoll": {
+      "type": "string",
+      "description": "Damage dice notation (e.g., '1d6', '2d4+1')",
+      "pattern": "^\\d+d\\d+(\\+|\\-)\\d+$|^\\d+d\\d+$"
+    },
+    "spriteInfo": {
+      "type": "object",
+      "description": "Information about the enemy's sprite on the sprite sheet",
+      "properties": {
+        "spriteSheetX": {
+          "type": "integer",
+          "description": "X position on the sprite sheet (in tiles)"
+        },
+        "spriteSheetY": {
+          "type": "integer",
+          "description": "Y position on the sprite sheet (in tiles)"
+        }
+      },
+      "required": ["spriteSheetX", "spriteSheetY"]
+    },
+    "movementRange": {
+      "type": "integer",
+      "description": "Number of tiles the enemy can move in one turn",
+      "minimum": 0
+    },
+    "aiType": {
+      "type": "string",
+      "description": "The type of AI this enemy uses",
+      "enum": ["BASIC", "AGGRESSIVE", "DEFENSIVE", "RANGED", "SUPPORT"]
+    },
+    "skills": {
+      "type": "array",
+      "description": "List of skills this enemy can use",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Name of the skill"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what the skill does"
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of skill",
+            "enum": ["MELEE_ATTACK", "RANGED_SINGLE_TARGET", "RANGED_AOE_CIRCLE"]
+          },
+          "range": {
+            "type": "integer",
+            "description": "Range of the skill in tiles",
+            "minimum": 1
+          },
+          "damageRoll": {
+            "type": "string",
+            "description": "Damage dice notation (e.g., '1d6', '2d4+1')",
+            "pattern": "^\\d+d\\d+(\\+|\\-)\\d+$|^\\d+d\\d+$"
+          },
+          "aoeRadius": {
+            "type": "integer",
+            "description": "Radius of area of effect (for AOE skills)",
+            "minimum": 0
+          }
+        },
+        "required": ["name", "type", "range", "damageRoll"]
+      }
+    },
+    "dropTable": {
+      "type": "array",
+      "description": "Items this enemy may drop when defeated",
+      "items": {
+        "type": "object",
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "description": "ID of the item that can be dropped"
+          },
+          "chance": {
+            "type": "number",
+            "description": "Chance (0.0 to 1.0) of dropping this item",
+            "minimum": 0.0,
+            "maximum": 1.0
+          }
+        },
+        "required": ["itemId", "chance"]
+      }
+    },
+    "experienceValue": {
+      "type": "integer",
+      "description": "Amount of experience gained for defeating this enemy",
+      "minimum": 0
+    }
+  },
+  "required": ["id", "name", "maxHp", "damageRoll", "spriteInfo", "movementRange"]
+} 

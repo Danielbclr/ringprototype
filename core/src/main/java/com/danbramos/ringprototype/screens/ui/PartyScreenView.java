@@ -64,36 +64,40 @@ public class PartyScreenView {
         this.skin = game.skin; // Cache the skin
     }
 
-    private Label createLabel(String text, String preferredStyleName, String fallbackStyleName) {
-        if (skin.has(preferredStyleName, Label.LabelStyle.class)) {
-            return new Label(text, skin, preferredStyleName);
-        } else if (skin.has(fallbackStyleName, Label.LabelStyle.class)) {
-            Gdx.app.log("PartyScreenView", "LabelStyle '" + preferredStyleName + "' not found. Falling back to '" + fallbackStyleName + "'.");
-            return new Label(text, skin, fallbackStyleName);
+    private Label createLabel(String text, String styleName) {
+        if (skin.has(styleName, Label.LabelStyle.class)) {
+            return new Label(text, skin, styleName);
         } else {
-            Gdx.app.error("PartyScreenView", "LabelStyle '" + preferredStyleName + "' and fallback '" + fallbackStyleName + "' not found. Creating programmatic fallback.");
-            Label.LabelStyle programmaticStyle = new Label.LabelStyle();
-            programmaticStyle.font = skin.getFont("default-font");
-            if (programmaticStyle.font == null) programmaticStyle.font = new BitmapFont();
-            programmaticStyle.fontColor = Color.WHITE;
-            return new Label(text, programmaticStyle);
+            Gdx.app.log("PartyScreenView", "LabelStyle '" + styleName + "' not found. Using default.");
+            return new Label(text, skin);
         }
-    }
-
-    private Label createLabel(String text, String preferredStyleName) {
-        return createLabel(text, preferredStyleName, "default");
     }
 
     public Table buildUI(Stage stage) {
         Table mainLayoutTable = new Table();
         mainLayoutTable.setFillParent(true);
-        // mainLayoutTable.setDebug(true); // For layout debugging
+        
+        // Apply a background to the main table if available in skin
+        if (skin.has("window-background", Skin.TintedDrawable.class)) {
+            mainLayoutTable.setBackground(skin.getTiledDrawable("window-background"));
+        }
 
-        // --- Title ---
-        Label titleLabel = createLabel("Party Roster", "default-title");
-        mainLayoutTable.add(titleLabel).colspan(2).padBottom(20).row();
+        // --- HEADER ---
+        Table headerTable = new Table();
+        Label titleLabel = createLabel("Party Roster", "title");
+        headerTable.add(titleLabel).expandX().center().pad(20);
+        mainLayoutTable.add(headerTable).expandX().fillX().pad(10).row();
 
-        // --- Character List ---
+        // --- CONTENT AREA ---
+        Table contentTable = new Table();
+
+        // --- Character List (LEFT PANEL) ---
+        Table leftPanel = new Table();
+        leftPanel.top().pad(10);
+        
+        Label charactersLabel = createLabel("Characters", "header");
+        leftPanel.add(charactersLabel).padBottom(10).left().row();
+        
         characterListWidget = new List<>(skin);
         Array<CharacterListItem> listItems = new Array<>();
         for (GameCharacter member : game.partyManager.getMembers()) {
@@ -111,69 +115,113 @@ public class PartyScreenView {
 
         ScrollPane characterListScrollPane = new ScrollPane(characterListWidget, skin);
         characterListScrollPane.setFadeScrollBars(false);
+        characterListScrollPane.setScrollingDisabled(true, false);
+        
+        leftPanel.add(characterListScrollPane).expand().fill().minWidth(200);
 
-        // --- Character Details Table ---
-        Table characterDetailsTable = new Table(skin);
-        characterDetailsTable.top().left();
-        // characterDetailsTable.setDebug(true);
+        // --- Character Details (RIGHT PANEL) ---
+        Table rightPanel = new Table();
+        rightPanel.top().pad(10);
+        
+        // Basic info section
+        Table infoSection = new Table();
+        infoSection.top().left();
 
-        selectedCharNameLabel = createLabel("", "default-title");
+        selectedCharNameLabel = createLabel("", "title");
         selectedCharLevelClassLabel = createLabel("", "default");
         selectedCharHpLabel = createLabel("", "default");
         selectedCharMpLabel = createLabel("", "default");
         selectedCharXpLabel = createLabel("", "default");
+        
+        infoSection.add(selectedCharNameLabel).left().padBottom(10).row();
+        infoSection.add(selectedCharLevelClassLabel).left().padBottom(5).row();
+        
+        // Health and Resources with visual bars
+        Table statsTable = new Table();
+        statsTable.add(selectedCharHpLabel).left().expandX();
+        statsTable.add(selectedCharMpLabel).left().expandX().row();
+        statsTable.add(selectedCharXpLabel).left().colspan(2).padTop(5);
+        
+        infoSection.add(statsTable).expandX().fillX().padBottom(15).row();
+        
+        // Attributes section
+        Table attributesSection = new Table();
+        attributesSection.top().left();
+        
+        Label attributesHeaderLabel = createLabel("Attributes", "header");
         selectedCharAttributesLabel = createLabel("", "default");
         selectedCharAttributesLabel.setWrap(true);
 
+        attributesSection.add(attributesHeaderLabel).left().padBottom(5).row();
+        attributesSection.add(selectedCharAttributesLabel).expandX().fillX().left().row();
+        
+        // Skills section
+        Table skillsSection = new Table();
+        skillsSection.top().left();
+        
+        Label skillsHeaderLabel = createLabel("Skills", "header");
         skillsTable = new Table(skin);
-        inventoryLayoutTable = new Table(skin);
+        ScrollPane skillsScrollPane = new ScrollPane(skillsTable, skin);
+        skillsScrollPane.setFadeScrollBars(false);
+        
+        skillsSection.add(skillsHeaderLabel).left().padBottom(5).row();
+        skillsSection.add(skillsScrollPane).expandX().fillX().height(120).row();
+        
+        // Equipment section
+        inventoryLayoutTable = new Table();
         equippedItemsTable = new Table(skin);
         carriedItemsTable = new Table(skin);
-        noCharacterSelectedLabel = createLabel("Select a character to view details.", "default");
+        
+        Label equippedLabel = createLabel("Equipped Items", "header");
+        ScrollPane equippedScrollPane = new ScrollPane(equippedItemsTable, skin);
+        equippedScrollPane.setFadeScrollBars(false);
+        
+        Label carriedLabel = createLabel("Carried Items", "header");
+        ScrollPane carriedScrollPane = new ScrollPane(carriedItemsTable, skin);
+        carriedScrollPane.setFadeScrollBars(false);
+        
+        inventoryLayoutTable.add(equippedLabel).left().padBottom(5).padTop(15).row();
+        inventoryLayoutTable.add(equippedScrollPane).expandX().fillX().height(100).padBottom(10).row();
+        inventoryLayoutTable.add(carriedLabel).left().padBottom(5).row();
+        inventoryLayoutTable.add(carriedScrollPane).expandX().fillX().height(100).row();
+        
+        // No character selected label
+        noCharacterSelectedLabel = createLabel("Select a character to view details", "default");
+        
+        // Add all sections to right panel
+        rightPanel.add(infoSection).expandX().fillX().row();
+        rightPanel.add(attributesSection).expandX().fillX().padTop(10).row();
+        rightPanel.add(skillsSection).expandX().fillX().padTop(15).row();
+        rightPanel.add(inventoryLayoutTable).expandX().fillX().padTop(10).row();
+        rightPanel.add(noCharacterSelectedLabel).center().expand().row();
 
-        characterDetailsTable.add(selectedCharNameLabel).left().colspan(2).padBottom(10).row();
-        characterDetailsTable.add(selectedCharLevelClassLabel).left().colspan(2).padBottom(5).row();
-        characterDetailsTable.add(selectedCharHpLabel).left().colspan(2).padBottom(5).row();
-        characterDetailsTable.add(selectedCharMpLabel).left().colspan(2).padBottom(5).row();
-        characterDetailsTable.add(selectedCharXpLabel).left().colspan(2).padBottom(15).row();
+        // Add panels to content area
+        contentTable.add(leftPanel).width(200).fillY().padRight(20);
+        contentTable.add(rightPanel).expand().fill();
+        
+        mainLayoutTable.add(contentTable).expand().fill().pad(10).row();
 
-        characterDetailsTable.add(createLabel("Attributes:", "default-bold")).left().colspan(2).padBottom(5).row();
-        characterDetailsTable.add(selectedCharAttributesLabel).left().growX().colspan(2).padBottom(15).row();
-
-        characterDetailsTable.add(createLabel("Skills:", "default-bold")).left().colspan(2).padBottom(5).row();
-        characterDetailsTable.add(new ScrollPane(skillsTable, skin)).growX().height(80).colspan(2).padBottom(15).row();
-
-        inventoryLayoutTable.add(createLabel("Equipped Items:", "default-bold")).left().row();
-        inventoryLayoutTable.add(new ScrollPane(equippedItemsTable, skin)).growX().height(60).padBottom(10).row();
-        inventoryLayoutTable.add(createLabel("Carried Items:", "default-bold")).left().row();
-        inventoryLayoutTable.add(new ScrollPane(carriedItemsTable, skin)).growX().height(60).row();
-        characterDetailsTable.add(inventoryLayoutTable).growX().colspan(2).row();
-
-        characterDetailsTable.add(noCharacterSelectedLabel).center().colspan(2).padTop(20);
-
-        // --- Layout for List and Details ---
-        Table contentTable = new Table();
-        contentTable.add(characterListScrollPane).width(200).growY().padRight(10);
-        contentTable.add(characterDetailsTable).grow();
-        mainLayoutTable.add(contentTable).grow().padBottom(20).row();
-
-        // --- Back Button ---
+        // --- FOOTER ---
+        Table footerTable = new Table();
         TextButton backButton = new TextButton("Back to Map", skin);
         backButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                game.setScreen(new MapScreen(game)); // Consider a more robust screen management
+                game.setScreen(new MapScreen(game));
             }
         });
-        mainLayoutTable.add(backButton).colspan(2).padTop(10);
+        
+        footerTable.add(backButton).expandX().right().pad(10);
+        mainLayoutTable.add(footerTable).expandX().fillX().pad(10).row();
 
         // Initial state
         if (!listItems.isEmpty()) {
-            characterListWidget.setSelectedIndex(0); // Select the first character by default
+            characterListWidget.setSelectedIndex(0);
             updateCharacterDetails(listItems.first().getCharacter());
         } else {
-            updateCharacterDetails(null); // Show "no character selected" or empty state
+            updateCharacterDetails(null);
         }
+        
         return mainLayoutTable;
     }
 
@@ -189,37 +237,15 @@ public class PartyScreenView {
         selectedCharAttributesLabel.setVisible(detailsVisible);
         inventoryLayoutTable.setVisible(detailsVisible);
 
-        // It's safer to check if the parent table (characterDetailsTable) is fully constructed
-        // before trying to access cells that might not exist if `character` is null initially.
-        // However, the labels themselves are already created, so setting their visibility is fine.
-
-        // Find header labels and set visibility. This is a bit fragile if layout changes.
-        // A more robust way would be to store references to these header labels if they also need to be hidden.
-        // For now, we assume the section content (like inventoryLayoutTable) handles its own children.
-        Table detailsParentTable = (Table) selectedCharAttributesLabel.getParent(); // This is characterDetailsTable
-        if (detailsParentTable != null) {
-            // Attributes Header (assuming it's the actor in the cell directly above selectedCharAttributesLabel's cell)
-            com.badlogic.gdx.scenes.scene2d.ui.Cell<?> attrCell = detailsParentTable.getCell(selectedCharAttributesLabel);
-            if (attrCell != null && attrCell.getRow() > 0) {
-                Actor attributesHeader = detailsParentTable.getCells().get(attrCell.getRow() -1 ).getActor();
-                if (attributesHeader instanceof Label && ((Label)attributesHeader).getText().toString().startsWith("Attributes:")) {
-                    attributesHeader.setVisible(detailsVisible);
-                }
-            }
-            // Skills Header
-            Actor skillsScrollPane = skillsTable.getParent(); // This is the ScrollPane
-            if (skillsScrollPane != null) {
-                skillsScrollPane.setVisible(detailsVisible); // Hide/show the scrollpane itself
-                com.badlogic.gdx.scenes.scene2d.ui.Cell<?> skillCell = detailsParentTable.getCell(skillsScrollPane);
-                if (skillCell != null && skillCell.getRow() > 0) {
-                    Actor skillsHeader = detailsParentTable.getCells().get(skillCell.getRow() -1 ).getActor();
-                    if (skillsHeader instanceof Label && ((Label)skillsHeader).getText().toString().startsWith("Skills:")) {
-                        skillsHeader.setVisible(detailsVisible);
-                    }
-                }
-            }
-        }
-
+        // Find parent Tables for section headers
+        Actor attributesHeader = selectedCharAttributesLabel.getParent().getParent().getChild(0);
+        Actor skillsScrollPane = skillsTable.getParent();
+        Actor skillsHeader = skillsScrollPane.getParent().getChild(0);
+        
+        // Set visibility for headers
+        if (attributesHeader instanceof Label) attributesHeader.setVisible(detailsVisible);
+        if (skillsHeader instanceof Label) skillsHeader.setVisible(detailsVisible);
+        if (skillsScrollPane instanceof ScrollPane) skillsScrollPane.setVisible(detailsVisible);
 
         if (!detailsVisible) {
             selectedCharNameLabel.setText("");
@@ -236,46 +262,88 @@ public class PartyScreenView {
 
         selectedCharNameLabel.setText(character.getName());
         selectedCharLevelClassLabel.setText("Level: " + character.getLevel() + " " + character.getGameClass().getDisplayName());
-        selectedCharHpLabel.setText("HP: " + character.getHealthPoints() + " / " + character.getMaxHealthPoints());
-        selectedCharMpLabel.setText("MP: " + character.getManaPoints() + " / " + character.getMaxManaPoints());
-        selectedCharXpLabel.setText("XP: " + character.getExperiencePoints() + " / " + character.getExperienceToNextLevel());
+        
+        // Format HP with colored text if available in the skin
+        int hpPercent = (int)(100 * character.getHealthPoints() / (float)character.getMaxHealthPoints());
+        selectedCharHpLabel.setText("HP: " + character.getHealthPoints() + "/" + character.getMaxHealthPoints() + " (" + hpPercent + "%)");
+        
+        // Format MP with colored text
+        int mpPercent = (int)(100 * character.getManaPoints() / (float)character.getMaxManaPoints());
+        selectedCharMpLabel.setText("MP: " + character.getManaPoints() + "/" + character.getMaxManaPoints() + " (" + mpPercent + "%)");
+        
+        // Format XP with progress
+        int xpPercent = (int)(100 * character.getExperiencePoints() / (float)character.getExperienceToNextLevel());
+        selectedCharXpLabel.setText("XP: " + character.getExperiencePoints() + "/" + character.getExperienceToNextLevel() + " (" + xpPercent + "%)");
 
+        // Format attributes in a more readable layout
         StringBuilder attrBuilder = new StringBuilder();
-        attrBuilder.append("STR: ").append(character.getStrength()).append(" | ");
-        attrBuilder.append("DEX: ").append(character.getDexterity()).append(" | ");
-        attrBuilder.append("INT: ").append(character.getIntelligence()).append("\n");
-        attrBuilder.append("CON: ").append(character.getConstitution()).append(" | ");
-        attrBuilder.append("WIS: ").append(character.getWisdom()).append(" | ");
-        attrBuilder.append("CHA: ").append(character.getCharisma());
+        attrBuilder.append("Strength: ").append(character.getStrength()).append("\n");
+        attrBuilder.append("Dexterity: ").append(character.getDexterity()).append("\n");
+        attrBuilder.append("Intelligence: ").append(character.getIntelligence()).append("\n");
+        attrBuilder.append("Constitution: ").append(character.getConstitution()).append("\n");
+        attrBuilder.append("Wisdom: ").append(character.getWisdom()).append("\n");
+        attrBuilder.append("Charisma: ").append(character.getCharisma());
         selectedCharAttributesLabel.setText(attrBuilder.toString());
 
+        // Clear and rebuild skills table
         skillsTable.clearChildren();
         skillsTable.top().left();
         if (character.getKnownSkills().isEmpty()) {
-            skillsTable.add(createLabel("No skills known.", "default")).left();
+            skillsTable.add(createLabel("No skills known", "default")).left();
         } else {
+            // Create a more informative skill list with descriptions
+            Table headerRow = new Table();
+            headerRow.add(createLabel("Skill", "default-bold")).expandX().left().padRight(10);
+            headerRow.add(createLabel("Type", "default-bold")).expandX().left().padRight(10);
+            headerRow.add(createLabel("Cost", "default-bold")).expandX().left();
+            skillsTable.add(headerRow).expandX().fillX().padBottom(5).row();
+            
             for (Skill skill : character.getKnownSkills()) {
-                skillsTable.add(createLabel(skill.getName(), "default")).left().row();
+                Table skillRow = new Table();
+                skillRow.add(createLabel(skill.getName(), "default")).expandX().left().padRight(10);
+                skillRow.add(createLabel(skill.getType().name(), "default")).expandX().left().padRight(10);
+                skillRow.add(createLabel(skill.getDamageRoll(), "default")).expandX().left();
+                skillsTable.add(skillRow).expandX().fillX().padBottom(3).row();
             }
         }
 
+        // Clear and rebuild equipped items
         equippedItemsTable.clearChildren();
         equippedItemsTable.top().left();
         if (character.getEquippedItems().isEmpty()) {
-            equippedItemsTable.add(createLabel("Nothing equipped.", "default")).left();
+            equippedItemsTable.add(createLabel("Nothing equipped", "default")).left();
         } else {
+            // Create a more informative equipment list
+            Table headerRow = new Table();
+            headerRow.add(createLabel("Item", "default-bold")).expandX().left().padRight(10);
+            headerRow.add(createLabel("Type", "default-bold")).expandX().left();
+            equippedItemsTable.add(headerRow).expandX().fillX().padBottom(5).row();
+            
             for (Item item : character.getEquippedItems()) {
-                equippedItemsTable.add(createLabel(item.getName() + " [" + item.getType().getDisplayName() + "]", "default")).left().row();
+                Table itemRow = new Table();
+                itemRow.add(createLabel(item.getName(), "default")).expandX().left().padRight(10);
+                itemRow.add(createLabel(item.getType().getDisplayName(), "default")).expandX().left();
+                equippedItemsTable.add(itemRow).expandX().fillX().padBottom(3).row();
             }
         }
 
+        // Clear and rebuild carried items
         carriedItemsTable.clearChildren();
         carriedItemsTable.top().left();
         if (character.getInventory().isEmpty()) {
-            carriedItemsTable.add(createLabel("Carrying nothing else.", "default")).left();
+            carriedItemsTable.add(createLabel("Carrying nothing else", "default")).left();
         } else {
+            // Create a more informative inventory list
+            Table headerRow = new Table();
+            headerRow.add(createLabel("Item", "default-bold")).expandX().left().padRight(10);
+            headerRow.add(createLabel("Type", "default-bold")).expandX().left();
+            carriedItemsTable.add(headerRow).expandX().fillX().padBottom(5).row();
+            
             for (Item item : character.getInventory()) {
-                carriedItemsTable.add(createLabel(item.getName() + " [" + item.getType().getDisplayName() + "]", "default")).left().row();
+                Table itemRow = new Table();
+                itemRow.add(createLabel(item.getName(), "default")).expandX().left().padRight(10);
+                itemRow.add(createLabel(item.getType().getDisplayName(), "default")).expandX().left();
+                carriedItemsTable.add(itemRow).expandX().fillX().padBottom(3).row();
             }
         }
     }

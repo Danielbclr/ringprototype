@@ -1,0 +1,44 @@
+{
+  "id": "orc_grunt",
+  "name": "Orc Grunt",
+  "description": "A brutal foot soldier of Sauron's army. Orcs are vicious and tough, if not particularly bright.",
+  "maxHp": 8,
+  "damageRoll": "1d6",
+  "spriteInfo": {
+    "spriteSheetX": 27,
+    "spriteSheetY": 2
+  },
+  "movementRange": 3,
+  "aiType": "AGGRESSIVE",
+  "skills": [
+    {
+      "name": "Slash",
+      "description": "A powerful swing of the orc's crude blade.",
+      "type": "MELEE_ATTACK",
+      "range": 1,
+      "damageRoll": "1d6"
+    },
+    {
+      "name": "Brutal Strike",
+      "description": "A devastating attack that sacrifices accuracy for power.",
+      "type": "MELEE_ATTACK",
+      "range": 1,
+      "damageRoll": "1d8-1"
+    }
+  ],
+  "dropTable": [
+    {
+      "itemId": "crude_sword",
+      "chance": 0.3
+    },
+    {
+      "itemId": "orc_hide",
+      "chance": 0.5
+    },
+    {
+      "itemId": "health_potion",
+      "chance": 0.1
+    }
+  ],
+  "experienceValue": 20
+} 

@@ -1,0 +1,154 @@
+{
+  "skills": [
+    {
+      "id": "skill_slash",
+      "name": "Slash",
+      "description": "A basic melee attack.",
+      "skillType": "MELEE_ATTACK",
+      "range": 1,
+      "damageFormula": "1d8",
+      "aoeRadius": 0,
+      "manaCost": 0,
+      "cooldown": 0,
+      "requiredClass": "WARRIOR",
+      "requiredLevel": 1,
+      "statusEffects": []
+    },
+    {
+      "id": "skill_precise_shot",
+      "name": "Precise Shot",
+      "description": "A single arrow shot.",
+      "skillType": "RANGED_SINGLE_TARGET",
+      "range": 5,
+      "damageFormula": "1d6",
+      "aoeRadius": 0,
+      "manaCost": 0,
+      "cooldown": 0,
+      "requiredClass": "RANGER",
+      "requiredLevel": 1,
+      "statusEffects": []
+    },
+    {
+      "id": "skill_explosive_arrow",
+      "name": "Explosive Arrow",
+      "description": "An arrow that explodes on impact.",
+      "skillType": "RANGED_AOE_CIRCLE",
+      "range": 5,
+      "damageFormula": "1d4",
+      "aoeRadius": 2,
+      "manaCost": 3,
+      "cooldown": 2,
+      "requiredClass": "RANGER",
+      "requiredLevel": 2,
+      "statusEffects": [
+        {
+          "type": "BURN",
+          "chance": 0.3,
+          "duration": 2
+        }
+      ]
+    },
+    {
+      "id": "skill_cleave",
+      "name": "Cleave",
+      "description": "A sweeping attack that hits multiple enemies.",
+      "skillType": "MELEE_ATTACK",
+      "range": 1,
+      "damageFormula": "1d6",
+      "aoeRadius": 1,
+      "manaCost": 2,
+      "cooldown": 1,
+      "requiredClass": "WARRIOR",
+      "requiredLevel": 2,
+      "statusEffects": []
+    },
+    {
+      "id": "skill_whirlwind",
+      "name": "Whirlwind",
+      "description": "Spin in a circle, hitting all adjacent enemies.",
+      "skillType": "MELEE_ATTACK",
+      "range": 1,
+      "damageFormula": "1d4",
+      "aoeRadius": 1,
+      "manaCost": 4,
+      "cooldown": 3,
+      "requiredClass": "WARRIOR",
+      "requiredLevel": 3,
+      "statusEffects": [
+        {
+          "type": "STUN",
+          "chance": 0.2,
+          "duration": 1
+        }
+      ]
+    },
+    {
+      "id": "skill_barrage",
+      "name": "Arrow Barrage",
+      "description": "Fire multiple arrows at once in a pattern.",
+      "skillType": "RANGED_AOE_CIRCLE",
+      "range": 4,
+      "damageFormula": "2d4",
+      "aoeRadius": 2,
+      "manaCost": 5,
+      "cooldown": 3,
+      "requiredClass": "RANGER",
+      "requiredLevel": 3,
+      "statusEffects": []
+    },
+    {
+      "id": "skill_healing_herbs",
+      "name": "Healing Herbs",
+      "description": "Use herbs to heal an ally or yourself.",
+      "skillType": "HEAL",
+      "range": 2,
+      "damageFormula": "2d4",
+      "aoeRadius": 0,
+      "manaCost": 3,
+      "cooldown": 2,
+      "requiredClass": "HOBBIT",
+      "requiredLevel": 1,
+      "statusEffects": []
+    },
+    {
+      "id": "skill_fireball",
+      "name": "Fireball",
+      "description": "Cast a ball of fire that explodes on impact.",
+      "skillType": "RANGED_AOE_CIRCLE",
+      "range": 6,
+      "damageFormula": "2d6",
+      "aoeRadius": 2,
+      "manaCost": 5,
+      "cooldown": 2,
+      "requiredClass": "WIZARD",
+      "requiredLevel": 1,
+      "statusEffects": [
+        {
+          "type": "BURN",
+          "chance": 0.5,
+          "duration": 3
+        }
+      ]
+    },
+    {
+      "id": "skill_light_of_valinor",
+      "name": "Light of Valinor",
+      "description": "Unleash a blinding light that damages enemies and heals allies.",
+      "skillType": "RANGED_AOE_CIRCLE",
+      "range": 3,
+      "damageFormula": "3d6",
+      "aoeRadius": 3,
+      "manaCost": 8,
+      "cooldown": 5,
+      "requiredClass": "WIZARD",
+      "requiredLevel": 5,
+      "statusEffects": [
+        {
+          "type": "STUN",
+          "chance": 0.4,
+          "duration": 2
+        }
+      ]
+    }
+  ]
+} 

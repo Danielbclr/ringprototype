@@ -87,10 +87,13 @@ public class BattleInputHandler extends InputAdapter {
 
     public void calculateMovementReachableTiles(BattleCharacter battleCharacter) {
         movementReachableTiles.clear();
-        if (battleCharacter == null || battleCharacter.hasPerformedMajorAction()) return;
+        if (battleCharacter == null) return;
+        
+        // Allow movement if the character has remaining movement points
+        if (battleCharacter.getRemainingMovement() <= 0) return;
 
         Vector2 startPos = battleCharacter.getBattleMapPosition();
-        int range = battleCharacter.getMovementRange();
+        int range = battleCharacter.getRemainingMovement(); // Use remaining movement
 
         for (int x = 0; x < mapWidthInTiles; x++) {
             for (int y = 0; y < mapHeightInTiles; y++) {
@@ -154,6 +157,16 @@ public class BattleInputHandler extends InputAdapter {
         }
     }
 
+    public void clearSkillHighlights() {
+        skillRangeTiles.clear();
+        skillAoeTiles.clear();
+        selectedSkill = null;
+        aoeCenterTile = null;
+    }
+
+    public void setActionState(ActionState newState) {
+        this.currentActionState = newState;
+    }
 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
@@ -163,8 +176,14 @@ public class BattleInputHandler extends InputAdapter {
         }
         BattleCharacter currentBC = (BattleCharacter) currentTurnActor;
 
-        if (currentBC.hasPerformedMajorAction() && currentActionState != ActionState.TARGETING_SKILL_AOE_CONFIRM) {
-            Gdx.app.log("BattleInputHandler", "Major action already performed this turn.");
+        // Allow movement as long as character has remaining movement
+        // and is not targeting a skill
+        if (currentActionState == ActionState.TARGETING_SKILL_ACTOR || 
+            currentActionState == ActionState.TARGETING_SKILL_TILE ||
+            currentActionState == ActionState.TARGETING_SKILL_AOE_CONFIRM) {
+            // Continue with skill targeting
+        } else if (currentBC.getRemainingMovement() <= 0) {
+            Gdx.app.log("BattleInputHandler", "No movement points left this turn.");
             return false;
         }
 
@@ -183,8 +202,17 @@ public class BattleInputHandler extends InputAdapter {
             case IDLE:
             case MOVING: // In IDLE state, a click attempts movement
                 if (movementReachableTiles.contains(clickedTileVec, false)) {
-                    battleScreen.handleCharacterMove(currentBC, tileX, tileY);
-                    // State change to IDLE and clearing highlights will be done by BattleScreen or startTurnFor
+                    int movementCost = currentBC.calculateMovementCost(tileX, tileY);
+                    battleScreen.handleCharacterMove(currentBC, tileX, tileY, movementCost);
+                    
+                    // Only recalculate movement tiles if there's still movement left
+                    if (currentBC.getRemainingMovement() > 0) {
+                        calculateMovementReachableTiles(currentBC);
+                        currentActionState = ActionState.MOVING;
+                    } else {
+                        clearAllHighlights();
+                        currentActionState = ActionState.IDLE;
+                    }
                     return true;
                 }
                 break;

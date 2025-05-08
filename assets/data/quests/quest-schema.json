@@ -1,0 +1,204 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the quest"
+    },
+    "title": {
+      "type": "string",
+      "description": "Title of the quest shown to the player"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the quest objectives and story"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["NOT_STARTED", "IN_PROGRESS", "COMPLETED"],
+      "description": "Current status of the quest"
+    },
+    "giver": {
+      "type": "string",
+      "description": "Name of the NPC that gives this quest"
+    },
+    "giverSpriteInfo": {
+      "type": "object",
+      "properties": {
+        "spriteSheetX": {
+          "type": "integer",
+          "description": "X position on the sprite sheet (in tiles)"
+        },
+        "spriteSheetY": {
+          "type": "integer",
+          "description": "Y position on the sprite sheet (in tiles)"
+        }
+      },
+      "required": ["spriteSheetX", "spriteSheetY"]
+    },
+    "giverMapPosition": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "description": "X position on the map (in tiles)"
+        },
+        "y": {
+          "type": "integer",
+          "description": "Y position on the map (in tiles)"
+        }
+      },
+      "required": ["x", "y"]
+    },
+    "dialogues": {
+      "type": "object",
+      "properties": {
+        "offer": {
+          "type": "array",
+          "description": "Dialog shown when the quest is offered",
+          "items": {
+            "type": "object",
+            "properties": {
+              "speaker": {
+                "type": "string",
+                "description": "Name of the character speaking this line"
+              },
+              "text": {
+                "type": "string",
+                "description": "The dialog text"
+              },
+              "choices": {
+                "type": "array",
+                "description": "Optional choices for player response",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "description": "The choice text shown to the player"
+                    },
+                    "nextDialogId": {
+                      "type": "string",
+                      "description": "ID of the next dialog to show"
+                    }
+                  },
+                  "required": ["text"]
+                }
+              }
+            },
+            "required": ["speaker", "text"]
+          }
+        },
+        "inProgress": {
+          "type": "array",
+          "description": "Dialog shown when the quest is in progress",
+          "items": {
+            "type": "object",
+            "properties": {
+              "speaker": {
+                "type": "string",
+                "description": "Name of the character speaking this line"
+              },
+              "text": {
+                "type": "string",
+                "description": "The dialog text"
+              }
+            },
+            "required": ["speaker", "text"]
+          }
+        },
+        "completion": {
+          "type": "array",
+          "description": "Dialog shown when the quest is completed",
+          "items": {
+            "type": "object",
+            "properties": {
+              "speaker": {
+                "type": "string",
+                "description": "Name of the character speaking this line"
+              },
+              "text": {
+                "type": "string",
+                "description": "The dialog text"
+              }
+            },
+            "required": ["speaker", "text"]
+          }
+        }
+      },
+      "required": ["offer"]
+    },
+    "objectives": {
+      "type": "array",
+      "description": "Objectives that must be completed for this quest",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this objective"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description shown to the player"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["KILL", "COLLECT", "TALK_TO", "REACH_LOCATION"],
+            "description": "Type of objective"
+          },
+          "targetId": {
+            "type": "string",
+            "description": "ID of the target (enemy, item, NPC, location)"
+          },
+          "count": {
+            "type": "integer",
+            "description": "Number of targets needed",
+            "minimum": 1
+          },
+          "completed": {
+            "type": "boolean",
+            "description": "Whether this objective is completed"
+          }
+        },
+        "required": ["id", "description", "type", "targetId", "count", "completed"]
+      }
+    },
+    "rewards": {
+      "type": "object",
+      "properties": {
+        "gold": {
+          "type": "integer",
+          "description": "Amount of gold rewarded",
+          "minimum": 0
+        },
+        "experience": {
+          "type": "integer",
+          "description": "Amount of experience rewarded",
+          "minimum": 0
+        },
+        "items": {
+          "type": "array",
+          "description": "Items rewarded upon completion",
+          "items": {
+            "type": "object",
+            "properties": {
+              "itemId": {
+                "type": "string",
+                "description": "ID of the rewarded item"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Number of this item to reward",
+                "minimum": 1
+              }
+            },
+            "required": ["itemId", "count"]
+          }
+        }
+      }
+    }
+  },
+  "required": ["id", "title", "description", "dialogues", "giver", "giverSpriteInfo", "giverMapPosition"]
+} 

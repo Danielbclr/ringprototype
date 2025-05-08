@@ -73,6 +73,14 @@ public class Enemy implements IBattleActor {
         this.hasTakenTurn = hasTakenTurn;
     }
 
+    /**
+     * Get the movement range of this enemy
+     * @return The movement range in tiles
+     */
+    public int getMovementRange() {
+        return movementRange;
+    }
+
     @Override
     public void takeDamage(int amount) {
         this.currentHp -= amount;
@@ -92,15 +100,39 @@ public class Enemy implements IBattleActor {
             return 0;
         }
         try {
-            String[] parts = damageRoll.toLowerCase().split("d");
+            // Handle damage rolls with modifiers like "1d6+1"
+            int modifier = 0;
+            String rollPart = damageRoll.toLowerCase();
+            
+            // Check for modifier in the format "XdY+Z" or "XdY-Z"
+            if (rollPart.contains("+")) {
+                String[] modifierParts = rollPart.split("\\+");
+                rollPart = modifierParts[0]; // The dice part (e.g., "1d6")
+                modifier = Integer.parseInt(modifierParts[1]); // The modifier (e.g., "1")
+            } else if (rollPart.contains("-")) {
+                String[] modifierParts = rollPart.split("-");
+                rollPart = modifierParts[0]; // The dice part (e.g., "1d6")
+                modifier = -Integer.parseInt(modifierParts[1]); // Negative modifier
+            }
+            
+            // Now parse the dice part "XdY"
+            String[] parts = rollPart.split("d");
             if (parts.length != 2) return 1; // Default on bad format
+            
             int numDice = Integer.parseInt(parts[0]);
             int diceSides = Integer.parseInt(parts[1]);
+            
+            // Roll the dice
             int totalDamage = 0;
             for (int i = 0; i < numDice; i++) {
                 totalDamage += random.nextInt(diceSides) + 1;
             }
-            return totalDamage;
+            
+            // Apply the modifier
+            totalDamage += modifier;
+            
+            // Ensure minimum damage of 1
+            return Math.max(1, totalDamage);
         } catch (Exception e) {
             Gdx.app.error(getName(), "Failed to parse damage roll: " + damageRoll, e);
             return 1; // Default damage on error
@@ -129,11 +161,162 @@ public class Enemy implements IBattleActor {
     }
 
     /**
-     * Contains the simple AI logic for the enemy's turn.
+     * Calculates the best position to move towards a target given a maximum movement range.
+     * Uses a breadth-first search approach to find the optimal path.
+     * 
+     * @param currentPos Current position
+     * @param targetPos Target position
+     * @param maxMovement Maximum movement range
+     * @param battleScreen Reference to BattleScreen for utility methods
+     * @return The best position to move to, or null if no valid move exists
+     */
+    private Vector2 moveTowardsTarget(Vector2 currentPos, Vector2 targetPos, int maxMovement, BattleScreen battleScreen) {
+        // If we can't move, return null
+        if (maxMovement <= 0) {
+            return null;
+        }
+        
+        Gdx.app.log(getName(), "Planning movement from " + currentPos + " toward " + targetPos + " with max movement " + maxMovement);
+        
+        // Initialize variables for pathfinding
+        Array<PathNode> queue = new Array<>();
+        Array<Vector2> visited = new Array<>();
+        
+        // Start with the current position
+        queue.add(new PathNode(currentPos, null, 0));
+        visited.add(new Vector2(currentPos));
+        
+        // Possible move directions (up, right, down, left)
+        int[][] directions = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+        
+        // Best move found so far - will be set to the node closest to target
+        // within movement range
+        PathNode bestMove = null;
+        float bestDistanceSq = Float.MAX_VALUE;
+        
+        // Breadth-first search to find all reachable positions
+        while (queue.size > 0) {
+            PathNode current = queue.removeIndex(0);
+            
+            // If we've moved more than our maximum, skip this node
+            if (current.movesUsed > maxMovement) {
+                continue;
+            }
+            
+            // Check if this is the best move so far (closest to target)
+            float distanceSq = current.position.dst2(targetPos);
+            if (distanceSq < bestDistanceSq) {
+                bestDistanceSq = distanceSq;
+                bestMove = current;
+                Gdx.app.debug(getName(), "Found better move: " + current.position + " distance: " + distanceSq + " moves used: " + current.movesUsed);
+            }
+            
+            // If we've reached our movement limit, don't explore further from this node
+            if (current.movesUsed >= maxMovement) {
+                continue;
+            }
+            
+            // Try each direction
+            for (int[] dir : directions) {
+                float newX = current.position.x + dir[0];
+                float newY = current.position.y + dir[1];
+                Vector2 newPos = new Vector2(newX, newY);
+                
+                // Check if the move is valid
+                boolean alreadyVisited = false;
+                for (Vector2 v : visited) {
+                    if (v.epsilonEquals(newPos)) {
+                        alreadyVisited = true;
+                        break;
+                    }
+                }
+                
+                if (!alreadyVisited && battleScreen.isTileWithinMapBounds(newX, newY)) {
+                    // Don't check for occupation for the final position if we're trying to move next to the target
+                    boolean isValidPosition = true;
+                    
+                    // Skip occupation check if this would be adjacent to the target
+                    boolean adjacentToTarget = Math.abs(newX - targetPos.x) + Math.abs(newY - targetPos.y) <= 1;
+                    if (!adjacentToTarget) {
+                        isValidPosition = !battleScreen.isTileOccupied(newX, newY);
+                    }
+                    
+                    if (isValidPosition) {
+                        PathNode newNode = new PathNode(newPos, current, current.movesUsed + 1);
+                        queue.add(newNode);
+                        visited.add(newPos);
+                    }
+                }
+            }
+        }
+        
+        // If we found a valid move
+        if (bestMove != null) {
+            Gdx.app.log(getName(), "Best move is at " + bestMove.position + " with " + bestMove.movesUsed + " moves used");
+            
+            // Trace back to the first move in the path
+            PathNode pathNode = bestMove;
+            
+            // If this is the starting position, return null (no movement)
+            if (pathNode.parent == null) {
+                Gdx.app.log(getName(), "No valid movement found - staying at current position");
+                return null;
+            }
+            
+            // Trace back the path to the first step
+            while (pathNode.parent != null && pathNode.parent.parent != null) {
+                pathNode = pathNode.parent;
+            }
+            
+            // Log the full path for debugging
+            StringBuilder pathLog = new StringBuilder("Movement path: ");
+            PathNode temp = bestMove;
+            while (temp != null) {
+                pathLog.append(temp.position);
+                if (temp.parent != null) {
+                    pathLog.append(" <- ");
+                }
+                temp = temp.parent;
+            }
+            Gdx.app.log(getName(), pathLog.toString());
+            
+            return pathNode.position;
+        }
+        
+        Gdx.app.log(getName(), "No valid path found");
+        return null;
+    }
+    
+    /**
+     * Checks if a move to the given position is valid.
+     */
+    private boolean isValidMove(float x, float y, Array<Vector2> visited, BattleScreen battleScreen) {
+        // Check if out of bounds
+        if (!battleScreen.isTileWithinMapBounds(x, y)) {
+            return false;
+        }
+        
+        // Check if occupied by another actor
+        if (battleScreen.isTileOccupied(x, y)) {
+            return false;
+        }
+        
+        // Check if already visited in our pathfinding
+        for (Vector2 pos : visited) {
+            if (pos.epsilonEquals(x, y)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Contains the improved AI logic for the enemy's turn.
      * 1. Find the closest alive BattleCharacter.
-     * 2. If adjacent, attack.
-     * 3. Else, if has movement, move one step towards them.
-     * 4. Mark action as performed.
+     * 2. Calculate if we can reach and attack the player this turn.
+     * 3. If can reach, move and attack.
+     * 4. If cannot reach, move towards them using full movement range.
      *
      * @param allCombatants List of all actors in the battle.
      * @param battleScreen  Reference to BattleScreen for utility methods (e.g., isTileOccupied, map dimensions).
@@ -169,9 +352,10 @@ public class Enemy implements IBattleActor {
 
         Vector2 targetPos = closestTarget.getBattleMapPosition();
         int manhattanDistance = (int) (Math.abs(currentPos.x - targetPos.x) + Math.abs(currentPos.y - targetPos.y));
+        Gdx.app.log(getName(), "Distance to " + closestTarget.getName() + ": " + manhattanDistance + ", movement range: " + this.movementRange);
 
-        // 2. Attack if adjacent
-        if (manhattanDistance <= 1) { // Adjacent (range of 1 for melee)
+        // 2. Attack if already adjacent
+        if (manhattanDistance <= 1) { 
             Gdx.app.log(getName(), "is adjacent to " + closestTarget.getName() + ". Attacking!");
             int damage = rollDamage();
             closestTarget.takeDamage(damage);
@@ -180,65 +364,52 @@ public class Enemy implements IBattleActor {
             return;
         }
 
-        // 3. Move if not adjacent (and has movement range)
-        if (this.movementRange > 0) {
-            float moveX = currentPos.x;
-            float moveY = currentPos.y;
-
-            float dx = targetPos.x - currentPos.x;
-            float dy = targetPos.y - currentPos.y;
-
-            // Determine primary direction of movement
-            boolean movedHorizontally = false;
-            boolean movedVertically = false;
-
-            if (Math.abs(dx) > Math.abs(dy)) {
-                moveX += Math.signum(dx);
-                movedHorizontally = true;
-            } else if (Math.abs(dy) > Math.abs(dx)) {
-                moveY += Math.signum(dy);
-                movedVertically = true;
-            } else if (dx != 0) { // Diagonal tie, prioritize X
-                moveX += Math.signum(dx);
-                movedHorizontally = true;
-            } else if (dy != 0) { // Diagonal tie, prioritize Y (only if dx was 0)
-                moveY += Math.signum(dy);
-                movedVertically = true;
-            }
-
-            // Check if the primary proposed move is valid
-            if (battleScreen.isTileWithinMapBounds(moveX, moveY) && !battleScreen.isTileOccupiedByAlly(moveX, moveY, this)) {
-                Gdx.app.log(getName(), "Moving from " + getBattleMapPosition() + " to (" + moveX + "," + moveY + ") towards " + closestTarget.getName());
-                setBattleMapPosition(moveX, moveY);
+        // 3. Check if we can reach and attack the player with our movement
+        if (this.movementRange >= manhattanDistance - 1) {
+            Gdx.app.log(getName(), "Can reach " + closestTarget.getName() + " this turn!");
+            
+            // Move close enough to attack (leaving 1 space for adjacency)
+            Vector2 finalPos = moveTowardsTarget(currentPos, targetPos, manhattanDistance - 1, battleScreen);
+            
+            if (finalPos != null) {
+                // Verify we actually moved
+                int newManhattanDistance = (int) (Math.abs(finalPos.x - targetPos.x) + Math.abs(finalPos.y - targetPos.y));
+                Gdx.app.log(getName(), "New distance after movement: " + newManhattanDistance);
+                
+                // If we successfully moved close enough
+                setBattleMapPosition(finalPos.x, finalPos.y);
+                Gdx.app.log(getName(), "Moved to (" + finalPos.x + "," + finalPos.y + ") to attack " + closestTarget.getName());
+                
+                // Now attack if we're adjacent
+                if (newManhattanDistance <= 1) {
+                    int damage = rollDamage();
+                    closestTarget.takeDamage(damage);
+                    Gdx.app.log(getName(), "attacked " + closestTarget.getName() + " for " + damage + " damage.");
+                }
                 setHasPerformedMajorAction(true);
                 return;
-            } else if (movedHorizontally && dy != 0) { // Primary horizontal move failed, try vertical if possible
-                moveX = currentPos.x; // Reset horizontal attempt
-                moveY = currentPos.y + Math.signum(dy);
-                if (battleScreen.isTileWithinMapBounds(moveX, moveY) && !battleScreen.isTileOccupiedByAlly(moveX, moveY, this)) {
-                    Gdx.app.log(getName(), "Moving (alt vertical) from " + getBattleMapPosition() + " to (" + moveX + "," + moveY + ") towards " + closestTarget.getName());
-                    setBattleMapPosition(moveX, moveY);
-                    setHasPerformedMajorAction(true);
-                    return;
-                }
-            } else if (movedVertically && dx != 0) { // Primary vertical move failed, try horizontal if possible
-                moveY = currentPos.y; // Reset vertical attempt
-                moveX = currentPos.x + Math.signum(dx);
-                if (battleScreen.isTileWithinMapBounds(moveX, moveY) && !battleScreen.isTileOccupiedByAlly(moveX, moveY, this)) {
-                    Gdx.app.log(getName(), "Moving (alt horizontal) from " + getBattleMapPosition() + " to (" + moveX + "," + moveY + ") towards " + closestTarget.getName());
-                    setBattleMapPosition(moveX, moveY);
-                    setHasPerformedMajorAction(true);
-                    return;
-                }
             }
-            Gdx.app.log(getName(), "Could not find a valid move towards " + closestTarget.getName() + ". Staying put.");
-        } else {
-            Gdx.app.log(getName(), "Cannot move (no movement range).");
         }
 
-        setHasPerformedMajorAction(true); // Mark action as performed even if only thought or couldn't move
+        // 4. If we can't reach to attack, move as far as possible toward the target
+        Vector2 bestPos = moveTowardsTarget(currentPos, targetPos, this.movementRange, battleScreen);
+        
+        if (bestPos != null) {
+            // Verify we're actually moving
+            if (!bestPos.epsilonEquals(currentPos)) {
+                Gdx.app.log(getName(), "Moving from " + currentPos + " to " + bestPos + " towards " + closestTarget.getName());
+                setBattleMapPosition(bestPos.x, bestPos.y);
+            } else {
+                Gdx.app.log(getName(), "Best move is current position - no change needed");
+            }
+            setHasPerformedMajorAction(true);
+            return;
+        }
+        
+        // If all movement options are blocked
+        Gdx.app.log(getName(), "Could not find a valid move towards " + closestTarget.getName() + ". Staying put.");
+        setHasPerformedMajorAction(true);
     }
-
 
     @Override
     public String toString() {
@@ -249,5 +420,20 @@ public class Enemy implements IBattleActor {
             ", move=" + movementRange + // Added move to toString
             ", pos=" + battleMapPosition +
             '}';
+    }
+    
+    /**
+     * Helper class for pathfinding
+     */
+    private static class PathNode {
+        Vector2 position;
+        PathNode parent;
+        int movesUsed;
+        
+        PathNode(Vector2 position, PathNode parent, int movesUsed) {
+            this.position = position;
+            this.parent = parent;
+            this.movesUsed = movesUsed;
+        }
     }
 }

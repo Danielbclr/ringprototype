@@ -1,0 +1,48 @@
+{
+  "id": "goblin_archer",
+  "name": "Goblin Archer",
+  "description": "A small, nimble goblin wielding a crude bow. They prefer to attack from a distance.",
+  "maxHp": 6,
+  "damageRoll": "1d4",
+  "spriteInfo": {
+    "spriteSheetX": 25,
+    "spriteSheetY": 1
+  },
+  "movementRange": 4,
+  "aiType": "RANGED",
+  "skills": [
+    {
+      "name": "Bow Shot",
+      "description": "A shot from the goblin's crude bow.",
+      "type": "RANGED_SINGLE_TARGET",
+      "range": 4,
+      "damageRoll": "1d4+1"
+    },
+    {
+      "name": "Dagger Strike",
+      "description": "A desperate melee attack with a small dagger.",
+      "type": "MELEE_ATTACK",
+      "range": 1,
+      "damageRoll": "1d4-1"
+    },
+    {
+      "name": "Volley",
+      "description": "Fires multiple arrows in an area.",
+      "type": "RANGED_AOE_CIRCLE",
+      "range": 3,
+      "damageRoll": "1d4",
+      "aoeRadius": 1
+    }
+  ],
+  "dropTable": [
+    {
+      "itemId": "crude_bow",
+      "chance": 0.4
+    },
+    {
+      "itemId": "arrows",
+      "chance": 0.6
+    }
+  ],
+  "experienceValue": 15
+} 

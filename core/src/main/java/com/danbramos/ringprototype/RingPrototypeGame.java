@@ -8,7 +8,9 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.danbramos.ringprototype.party.Character;
+import com.danbramos.ringprototype.party.ClassData;
 import com.danbramos.ringprototype.party.GameCharacter;
 import com.danbramos.ringprototype.party.GameClass;
 import com.danbramos.ringprototype.party.PartyManager;
@@ -17,12 +19,15 @@ import com.danbramos.ringprototype.screens.MapScreen;
 import com.danbramos.ringprototype.items.Item;
 import com.danbramos.ringprototype.items.ItemType;
 import com.danbramos.ringprototype.battle.Enemy;
+import com.danbramos.ringprototype.battle.EnemyData;
 import com.danbramos.ringprototype.battle.Skill;
 import com.danbramos.ringprototype.battle.SkillType;
+import com.danbramos.ringprototype.quests.QuestManager;
 import com.danbramos.ringprototype.resources.ResourceManager; // Import ResourceManager interface
 import com.danbramos.ringprototype.resources.DefaultResourceManager; // Import DefaultResourceManager implementation
 import com.danbramos.ringprototype.resources.ResourceType;   // Import ResourceType
 import com.badlogic.gdx.utils.Array;
+import com.danbramos.ringprototype.battle.SkillData;
 
 /**
  * Main game class that handles game initialization and resource management
@@ -43,6 +48,27 @@ public class RingPrototypeGame extends Game {
         partyManager = new DefaultPartyManager();
         resourceManager = new DefaultResourceManager();
         currentBattleEnemies = new Array<>();
+
+        // Initialize the data systems first so other systems can use them
+        ClassData.getInstance();
+        Gdx.app.log("RingPrototypeGame", "ClassData initialized");
+        
+        EnemyData.getInstance();
+        Gdx.app.log("RingPrototypeGame", "EnemyData initialized");
+        
+        QuestManager.getInstance();
+        Gdx.app.log("RingPrototypeGame", "QuestManager initialized");
+        
+        SkillData skillData = SkillData.getInstance();
+        Gdx.app.log("RingPrototypeGame", "SkillData initialized");
+        
+        // Debug log to verify skills are loaded
+        StringBuilder skillsLog = new StringBuilder("Loaded skills: ");
+        for (String skillId : skillData.getAllSkills().keySet()) {
+            Skill skill = skillData.getSkill(skillId);
+            skillsLog.append(skill.getName()).append(" (").append(skillId).append("), ");
+        }
+        Gdx.app.log("RingPrototypeGame", skillsLog.toString());
 
         // Example: Set some initial resources after ResourceManager is created
         resourceManager.setResourceAmount(ResourceType.FOOD, 20);
@@ -84,10 +110,15 @@ public class RingPrototypeGame extends Game {
             partyManager.setPartyMarkerSprite(new TextureRegion(characterSheet, markerSpriteX * tileWidth, markerSpriteY * tileHeight, tileWidth, tileHeight));
         }
 
-        // --- Create Skills ---
-        Skill aragornAttack = new Skill("Slash", "A basic melee attack.", SkillType.MELEE_ATTACK, 1, "1d8", 0);
-        Skill legolasShoot = new Skill("Precise Shot", "A single arrow shot.", SkillType.RANGED_SINGLE_TARGET, 5, "1d6", 0);
-        Skill legolasExplosiveArrow = new Skill("Explosive Arrow", "An arrow that explodes on impact.", SkillType.RANGED_AOE_CIRCLE, 5, "1d4", 2);
+        // Set initial party position near the quest giver
+        partyManager.setMapPosition(12, 10);
+        Gdx.app.log("RingPrototypeGame", "Party positioned on map at: " + partyManager.getMapPosition());
+
+        // --- Get Skills from SkillData ---
+        SkillData skillData = SkillData.getInstance();
+        Skill aragornAttack = skillData.getSkill("skill_slash");
+        Skill legolasShoot = skillData.getSkill("skill_precise_shot");
+        Skill legolasExplosiveArrow = skillData.getSkill("skill_explosive_arrow");
 
         // --- Initialize Party Members ---
         GameCharacter aragorn = new Character("Aragorn", GameClass.WARRIOR);
@@ -125,10 +156,19 @@ public class RingPrototypeGame extends Game {
 
         Gdx.app.log("RingPrototypeGame", "Party initialized. Members: " + partyManager.getPartySize());
 
-
         // --- Initialize Enemies ---
         currentBattleEnemies.clear();
+        
         if (characterSheet != null) {
+            // Create an orc enemy using the EnemyData system
+            Enemy orc = EnemyData.getInstance().createEnemy("orc_grunt", characterSheet, 6, 5);
+            if (orc != null) {
+                currentBattleEnemies.add(orc);
+                Gdx.app.log("RingPrototypeGame", orc.getName() + " added to battle enemies at " + 
+                            orc.getBattleMapPosition() + " with move " + orc.getMovementRange());
+            } else {
+                // Fallback to hardcoded enemy if enemy data loading fails
+                Gdx.app.error("RingPrototypeGame", "Failed to load orc_grunt from EnemyData, using fallback");
             int orcSpriteSheetX = 27; // Example sprite
             int orcSpriteSheetY = 2;  // Example sprite
             TextureRegion orcSprite = new TextureRegion(characterSheet,
@@ -137,11 +177,21 @@ public class RingPrototypeGame extends Game {
                 tileWidth,
                 tileHeight);
 
-            Enemy orc = new Enemy("Orc Grunt", 8, "1d6", orcSprite, 6, 5, 3);
+                orc = new Enemy("Orc Grunt", 8, "1d6", orcSprite, 6, 5, 3);
             currentBattleEnemies.add(orc);
-            Gdx.app.log("RingPrototypeGame", orc.getName() + " added to battle enemies at " + orc.getBattleMapPosition() + " with move " + 3);
+                Gdx.app.log("RingPrototypeGame", orc.getName() + " added to battle enemies at " + 
+                            orc.getBattleMapPosition() + " with move " + orc.getMovementRange());
+            }
+
+            // Add a warg enemy
+            Enemy warg = EnemyData.getInstance().createEnemy("warg", characterSheet, 8, 3);
+            if (warg != null) {
+                currentBattleEnemies.add(warg);
+                Gdx.app.log("RingPrototypeGame", warg.getName() + " added to battle enemies at " + 
+                             warg.getBattleMapPosition());
+            }
         } else {
-            Gdx.app.error("RingPrototypeGame", "Cannot create Orc enemy, characterSheet is null.");
+            Gdx.app.error("RingPrototypeGame", "Cannot create enemies, characterSheet is null.");
         }
     }
 
@@ -150,29 +200,65 @@ public class RingPrototypeGame extends Game {
         BitmapFont font = new BitmapFont();
         skin.add("default-font", font, BitmapFont.class);
 
+        // Create a white pixel texture for backgrounds
+        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        pixmap.setColor(com.badlogic.gdx.graphics.Color.WHITE);
+        pixmap.fill();
+        com.badlogic.gdx.graphics.Texture pixmapTexture = new com.badlogic.gdx.graphics.Texture(pixmap);
+        pixmap.dispose();
+        
+        // Add the white texture to the skin
+        skin.add("white-pixel", new TextureRegion(pixmapTexture), TextureRegion.class);
+        TextureRegionDrawable whiteDrawable = new TextureRegionDrawable(skin.getRegion("white-pixel"));
+        
+        // Create darker drawables for selection and background
+        com.badlogic.gdx.graphics.Pixmap darkPixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        darkPixmap.setColor(new com.badlogic.gdx.graphics.Color(0.2f, 0.2f, 0.2f, 1f));
+        darkPixmap.fill();
+        com.badlogic.gdx.graphics.Texture darkTexture = new com.badlogic.gdx.graphics.Texture(darkPixmap);
+        darkPixmap.dispose();
+        
+        skin.add("dark-pixel", new TextureRegion(darkTexture), TextureRegion.class);
+        TextureRegionDrawable darkDrawable = new TextureRegionDrawable(skin.getRegion("dark-pixel"));
+
+        // Label styles
         com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle labelStyle = new com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle();
         labelStyle.font = skin.getFont("default-font");
         labelStyle.fontColor = com.badlogic.gdx.graphics.Color.WHITE;
         skin.add("default", labelStyle);
 
+        // TextButton styles
         com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle textButtonStyle = new com.badlogic.gdx.scenes.scene2d.ui.TextButton.TextButtonStyle();
         textButtonStyle.font = skin.getFont("default-font");
         textButtonStyle.fontColor = com.badlogic.gdx.graphics.Color.WHITE;
+        textButtonStyle.up = darkDrawable;
+        textButtonStyle.down = whiteDrawable; 
+        textButtonStyle.over = new TextureRegionDrawable(skin.getRegion("dark-pixel")).tint(new com.badlogic.gdx.graphics.Color(0.3f, 0.3f, 0.3f, 1f));
         skin.add("default", textButtonStyle);
 
+        // List styles
         com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle listStyle = new com.badlogic.gdx.scenes.scene2d.ui.List.ListStyle();
         listStyle.font = skin.getFont("default-font");
-        listStyle.fontColorSelected = com.badlogic.gdx.graphics.Color.BLACK;
-        listStyle.fontColorUnselected = com.badlogic.gdx.graphics.Color.WHITE;
-        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
-        pixmap.setColor(com.badlogic.gdx.graphics.Color.DARK_GRAY);
-        pixmap.fill();
-        listStyle.selection = new com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable(new com.badlogic.gdx.graphics.g2d.TextureRegion(new com.badlogic.gdx.graphics.Texture(pixmap)));
-        pixmap.dispose();
+        listStyle.fontColorSelected = com.badlogic.gdx.graphics.Color.WHITE;
+        listStyle.fontColorUnselected = com.badlogic.gdx.graphics.Color.LIGHT_GRAY;
+        listStyle.selection = darkDrawable;
+        listStyle.background = whiteDrawable.tint(new com.badlogic.gdx.graphics.Color(0.15f, 0.15f, 0.15f, 1f));
         skin.add("default", listStyle);
 
+        // ScrollPane style
         com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle scrollPaneStyle = new com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle();
+        scrollPaneStyle.background = darkDrawable;
         skin.add("default", scrollPaneStyle);
+        
+        // Window style for DialogScreen
+        com.badlogic.gdx.scenes.scene2d.ui.Window.WindowStyle windowStyle = new com.badlogic.gdx.scenes.scene2d.ui.Window.WindowStyle();
+        windowStyle.titleFont = skin.getFont("default-font");
+        windowStyle.background = darkDrawable;
+        windowStyle.titleFontColor = com.badlogic.gdx.graphics.Color.WHITE;
+        skin.add("default", windowStyle);
+        
+        Gdx.app.log("RingPrototypeGame", "Created fallback skin with all required styles");
+        
         return skin;
     }
 

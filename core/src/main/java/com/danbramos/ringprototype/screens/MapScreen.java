@@ -5,11 +5,13 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -19,9 +21,12 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import com.danbramos.ringprototype.RingPrototypeGame;
 import com.danbramos.ringprototype.input.MapInputHandler;
-import com.danbramos.ringprototype.resources.ResourceType; // Import ResourceType
+import com.danbramos.ringprototype.quests.Quest;
+import com.danbramos.ringprototype.quests.QuestManager;
+import com.danbramos.ringprototype.resources.ResourceType;
 
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 
 public class MapScreen implements Screen {
@@ -41,11 +46,17 @@ public class MapScreen implements Screen {
     private Skin skin;
     private Table resourceTable;
     private EnumMap<ResourceType, Label> resourceLabels;
+    
+    // Quest giver management
+    private Map<String, Vector2> questGiverPositions;
+    private Map<String, TextureRegion> questGiverSprites;
 
 
     public MapScreen(RingPrototypeGame game) {
         this.game = game;
         this.skin = game.skin; // Get skin from the main game class
+        this.questGiverPositions = new HashMap<>();
+        this.questGiverSprites = new HashMap<>();
     }
 
     @Override
@@ -89,12 +100,34 @@ public class MapScreen implements Screen {
         uiStage = new Stage(new ScreenViewport());
         resourceLabels = new EnumMap<>(ResourceType.class);
         setupResourceUI();
+        
+        // Initialize quest givers
+        loadQuestGivers();
 
         // Add uiStage to the input processor if it has interactive elements,
         // or ensure MapInputHandler doesn't consume all input if UI needs clicks.
         // For now, resource display is passive. If you add buttons to it, you'll need an InputMultiplexer.
         // Gdx.input.setInputProcessor(new InputMultiplexer(uiStage, inputHandler));
         // For now, inputHandler is fine as primary.
+    }
+    
+    /**
+     * Load quest givers from the QuestManager
+     */
+    private void loadQuestGivers() {
+        questGiverPositions = QuestManager.getInstance().getQuestGiverPositions();
+        
+        // Create sprites for each quest giver
+        for (String questId : questGiverPositions.keySet()) {
+            Quest quest = QuestManager.getInstance().getQuest(questId);
+            if (quest != null) {
+                TextureRegion sprite = QuestManager.getInstance().createQuestGiverSprite(quest, game.characterSheet);
+                if (sprite != null) {
+                    questGiverSprites.put(questId, sprite);
+                    Gdx.app.log("MapScreen", "Loaded quest giver sprite for: " + quest.getTitle());
+                }
+            }
+        }
     }
 
     public void attemptCharacterMove(int deltaX, int deltaY) {
@@ -103,7 +136,7 @@ public class MapScreen implements Screen {
             return;
         }
 
-        com.badlogic.gdx.math.Vector2 currentPartyPosition = game.partyManager.getMapPosition();
+        Vector2 currentPartyPosition = game.partyManager.getMapPosition();
         if (currentPartyPosition == null) {
             Gdx.app.error("MapScreen", "Party map position is null, cannot move character.");
             return;
@@ -114,6 +147,14 @@ public class MapScreen implements Screen {
 
         // Basic boundary check using instance fields
         if (newX >= 0 && newX < this.mapWidthInTiles && newY >= 0 && newY < this.mapHeightInTiles) {
+            // Check if the position contains a quest giver
+            String questGiverId = getQuestGiverAtPosition(newX, newY);
+            if (questGiverId != null) {
+                // Interact with quest giver instead of moving
+                interactWithQuestGiver(questGiverId);
+                return;
+            }
+            
             // TODO: Add more sophisticated collision/traversability check here
             // For example, check a property of the TiledMapTileLayer:
             // TiledMapTileLayer collisionLayer = (TiledMapTileLayer) map.getLayers().get("CollisionLayerName");
@@ -138,6 +179,32 @@ public class MapScreen implements Screen {
         } else {
             Gdx.app.log("MapScreen", "Move to " + newX + "," + newY + " is out of map bounds.");
         }
+    }
+    
+    /**
+     * Check if there's a quest giver at the given position
+     * @param x The x coordinate
+     * @param y The y coordinate
+     * @return The quest ID if there's a quest giver, null otherwise
+     */
+    private String getQuestGiverAtPosition(float x, float y) {
+        for (Map.Entry<String, Vector2> entry : questGiverPositions.entrySet()) {
+            if (entry.getValue().epsilonEquals(x, y)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Interact with a quest giver
+     * @param questId The ID of the quest given by this NPC
+     */
+    private void interactWithQuestGiver(String questId) {
+        Gdx.app.log("MapScreen", "Interacting with quest giver for quest: " + questId);
+        
+        // Open the dialog screen for this quest
+        game.setScreen(new DialogScreen(game, questId));
     }
 
     private Label createLabel(String text, String styleName) {
@@ -196,9 +263,57 @@ public class MapScreen implements Screen {
         // Render party marker or other map elements
         game.batch.setProjectionMatrix(camera.combined);
         game.batch.begin();
+        
+        // Draw quest givers
+        for (Map.Entry<String, Vector2> entry : questGiverPositions.entrySet()) {
+            String questId = entry.getKey();
+            Vector2 position = entry.getValue();
+            TextureRegion sprite = questGiverSprites.get(questId);
+            
+            if (sprite != null) {
+                // Draw the quest giver
+                game.batch.draw(sprite, position.x, position.y, 1f, 1f);
+                
+                // Draw an exclamation mark or question mark based on quest status
+                Quest quest = QuestManager.getInstance().getQuest(questId);
+                if (quest != null) {
+                    // Draw indicator above quest giver - safely handle missing fonts
+                    String indicator = "!"; // Default for new quests
+                    if (quest.getStatus() == Quest.QuestStatus.IN_PROGRESS) {
+                        indicator = "?"; // Question mark for in-progress quests
+                    } else if (quest.getStatus() == Quest.QuestStatus.COMPLETED) {
+                        indicator = "✓"; // Checkmark for completed quests
+                    }
+                    
+                    // Create a simple text indicator instead of using the font
+                    // Draw a colored rectangle to indicate quest status
+                    float indicatorX = position.x + 0.7f;
+                    float indicatorY = position.y + 0.7f;
+                    float indicatorSize = 0.25f;
+                    
+                    // Set color based on quest status
+                    if (quest.getStatus() == Quest.QuestStatus.NOT_STARTED) {
+                        game.batch.setColor(Color.YELLOW); // Yellow for new quests
+                    } else if (quest.getStatus() == Quest.QuestStatus.IN_PROGRESS) {
+                        game.batch.setColor(Color.CYAN); // Cyan for in-progress
+                    } else {
+                        game.batch.setColor(Color.GREEN); // Green for completed
+                    }
+                    
+                    // Draw using a colored portion of the quest giver sprite as an indicator
+                    game.batch.draw(sprite, 
+                        indicatorX, indicatorY, 
+                        indicatorSize, indicatorSize);
+                    
+                    // Reset color
+                    game.batch.setColor(Color.WHITE);
+                }
+            }
+        }
+        
         // Ensure PartyManager and its methods exist and are populated
         if (game.partyManager != null && game.partyManager.getPartyMarkerSprite() != null && game.partyManager.getMapPosition() != null) {
-            com.badlogic.gdx.math.Vector2 partyPos = game.partyManager.getMapPosition();
+            Vector2 partyPos = game.partyManager.getMapPosition();
             // The drawing coordinates need to align with your map's unit scale.
             // The mapRenderer is initialized with `1f / tileWidth`.
             // If partyPos.x and partyPos.y are tile coordinates, drawing at (partyPos.x, partyPos.y)
@@ -253,14 +368,8 @@ public class MapScreen implements Screen {
     @Override
     public void dispose() {
         Gdx.app.log("MapScreen", "Disposing MapScreen.");
-        if (map != null) {
-            map.dispose();
-        }
-        if (mapRenderer instanceof OrthogonalTiledMapRenderer) {
-            ((OrthogonalTiledMapRenderer) mapRenderer).dispose();
-        }
-        if (uiStage != null) {
-            uiStage.dispose();
-        }
+        if (map != null) map.dispose();
+        if (mapRenderer instanceof OrthogonalTiledMapRenderer) ((OrthogonalTiledMapRenderer) mapRenderer).dispose();
+        if (uiStage != null) uiStage.dispose();
     }
 }

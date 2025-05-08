@@ -11,6 +11,7 @@ public class BattleCharacter implements IBattleActor {
     private Vector2 battleMapPosition;
     private int currentBattleHp;
     private boolean hasPerformedMajorActionThisTurn;
+    private int remainingMovement; // Track remaining movement
     // Potentially other battle-specific stats like temporary movement boosts
 
     public BattleCharacter(GameCharacter sourceCharacter) {
@@ -18,6 +19,7 @@ public class BattleCharacter implements IBattleActor {
         this.battleMapPosition = new Vector2(sourceCharacter.getBattleMapPosition()); // Initial position
         this.currentBattleHp = sourceCharacter.getHealthPoints(); // Start battle with current HP
         this.hasPerformedMajorActionThisTurn = false;
+        this.remainingMovement = sourceCharacter.getMovementRange();
     }
 
     @Override
@@ -68,6 +70,7 @@ public class BattleCharacter implements IBattleActor {
     @Override
     public void startTurn() {
         this.hasPerformedMajorActionThisTurn = false;
+        this.remainingMovement = getMovementRange(); // Reset movement at the start of turn
         // Any other start-of-turn logic for this battle actor
     }
 
@@ -106,5 +109,22 @@ public class BattleCharacter implements IBattleActor {
     public void applyEndOfBattleState() {
         sourceCharacter.setHealthPoints(this.currentBattleHp);
         // Potentially apply XP, status effects, etc.
+    }
+
+    // New methods for movement tracking
+    public int getRemainingMovement() {
+        return remainingMovement;
+    }
+
+    public void useMovement(int amount) {
+        this.remainingMovement -= amount;
+        if (this.remainingMovement < 0) {
+            this.remainingMovement = 0;
+        }
+    }
+
+    // Method to calculate Manhattan distance between current position and target
+    public int calculateMovementCost(float targetX, float targetY) {
+        return (int)(Math.abs(battleMapPosition.x - targetX) + Math.abs(battleMapPosition.y - targetY));
     }
 }

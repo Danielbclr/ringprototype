@@ -1,0 +1,27 @@
+{
+  "id": "mage",
+  "displayName": "Mage",
+  "description": "A wielder of arcane energies, casting powerful spells. Mages manipulate elemental forces to damage enemies or assist allies.",
+  "baseStats": {
+    "strength": 4,
+    "dexterity": 5,
+    "intelligence": 9,
+    "constitution": 4,
+    "wisdom": 8,
+    "charisma": 6
+  },
+  "startingHealth": 8,
+  "startingMana": 25,
+  "movementRange": 3,
+  "healthPerLevel": 3,
+  "manaPerLevel": 6,
+  "startingSkills": [
+    "fireball",
+    "frost_bolt"
+  ],
+  "startingItems": [
+    "apprentice_staff",
+    "wizard_robe",
+    "mana_potion"
+  ]
+} 

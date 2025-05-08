@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the class"
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Display name of the class"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the class, its background and abilities"
+    },
+    "baseStats": {
+      "type": "object",
+      "description": "Base statistics for this class",
+      "properties": {
+        "strength": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dexterity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "intelligence": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "constitution": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "wisdom": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "charisma": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["strength", "dexterity", "intelligence", "constitution", "wisdom", "charisma"]
+    },
+    "startingHealth": {
+      "type": "integer",
+      "description": "Starting health points for this class",
+      "minimum": 1
+    },
+    "startingMana": {
+      "type": "integer",
+      "description": "Starting mana points for this class",
+      "minimum": 0
+    },
+    "movementRange": {
+      "type": "integer",
+      "description": "Base movement range in battle",
+      "minimum": 1
+    },
+    "healthPerLevel": {
+      "type": "integer",
+      "description": "Health points gained per level",
+      "minimum": 1
+    },
+    "manaPerLevel": {
+      "type": "integer",
+      "description": "Mana points gained per level",
+      "minimum": 0
+    },
+    "startingSkills": {
+      "type": "array",
+      "description": "List of skill IDs the class starts with",
+      "items": {
+        "type": "string"
+      }
+    },
+    "startingItems": {
+      "type": "array",
+      "description": "List of item IDs the class starts with",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": ["id", "displayName", "description", "baseStats", "startingHealth", "startingMana", "movementRange"]
+} 

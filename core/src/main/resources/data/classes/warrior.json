@@ -1,0 +1,27 @@
+{
+  "id": "warrior",
+  "displayName": "Warrior",
+  "description": "A brave fighter, skilled in melee combat. Warriors excel at front-line combat, taking hits and dealing physical damage.",
+  "baseStats": {
+    "strength": 8,
+    "dexterity": 6,
+    "intelligence": 4,
+    "constitution": 8,
+    "wisdom": 5,
+    "charisma": 5
+  },
+  "startingHealth": 15,
+  "startingMana": 10,
+  "movementRange": 3,
+  "healthPerLevel": 5,
+  "manaPerLevel": 2,
+  "startingSkills": [
+    "slash",
+    "defend"
+  ],
+  "startingItems": [
+    "short_sword",
+    "leather_armor",
+    "health_potion"
+  ]
+} 

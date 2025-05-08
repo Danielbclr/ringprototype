@@ -1,0 +1,27 @@
+{
+  "id": "ranger",
+  "displayName": "Ranger",
+  "description": "A master of the wilds, adept with bows and survival skills. Rangers excel at ranged combat and wilderness survival.",
+  "baseStats": {
+    "strength": 6,
+    "dexterity": 8,
+    "intelligence": 5,
+    "constitution": 6,
+    "wisdom": 7,
+    "charisma": 4
+  },
+  "startingHealth": 12,
+  "startingMana": 15,
+  "movementRange": 4,
+  "healthPerLevel": 4,
+  "manaPerLevel": 3,
+  "startingSkills": [
+    "aimed_shot",
+    "track"
+  ],
+  "startingItems": [
+    "short_bow",
+    "leather_armor",
+    "hunting_knife"
+  ]
+} 

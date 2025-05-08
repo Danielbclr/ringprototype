@@ -1,0 +1,75 @@
+{
+  "id": "ring_quest_1",
+  "title": "The Ring Bearer's Trial",
+  "description": "Gandalf tasks you with proving your worth as the ring bearer by defeating orcs that have been sighted nearby.",
+  "status": "NOT_STARTED",
+  "giver": "Gandalf",
+  "giverSpriteInfo": {
+    "spriteSheetX": 8,
+    "spriteSheetY": 4
+  },
+  "giverMapPosition": {
+    "x": 10,
+    "y": 10
+  },
+  "dialogues": {
+    "offer": [
+      {
+        "speaker": "Gandalf",
+        "text": "Frodo, your journey as the ring bearer will be fraught with danger. Before we continue to Mordor, you must prove your strength."
+      },
+      {
+        "speaker": "Gandalf",
+        "text": "A band of orcs has been spotted near the edge of the forest. Defeat them to prove your resolve.",
+        "choices": [
+          {
+            "text": "I will do as you ask, Gandalf."
+          },
+          {
+            "text": "Is there no other way?"
+          }
+        ]
+      }
+    ],
+    "inProgress": [
+      {
+        "speaker": "Gandalf",
+        "text": "The orcs still threaten our path. You must deal with them before we can continue."
+      }
+    ],
+    "completion": [
+      {
+        "speaker": "Gandalf",
+        "text": "Well done, Frodo! You have proven yourself capable. The ring could not have found a more worthy bearer."
+      },
+      {
+        "speaker": "Gandalf",
+        "text": "Take these supplies. You will need them for the long journey ahead."
+      }
+    ]
+  },
+  "objectives": [
+    {
+      "id": "kill_orcs",
+      "description": "Defeat the orc patrol (3/3)",
+      "type": "KILL",
+      "targetId": "orc_grunt",
+      "count": 3,
+      "completed": false
+    }
+  ],
+  "rewards": {
+    "gold": 50,
+    "experience": 100,
+    "items": [
+      {
+        "itemId": "health_potion",
+        "count": 2
+      },
+      {
+        "itemId": "elven_bread",
+        "count": 1
+      }
+    ]
+  }
+} 
