@@ -1,4 +1,4 @@
-package com.danbramos.ringprototype.battle; // Or com.danbramos.ringprototype.skills
+package com.danbramos.ringprototype.battle.skills; // Or com.danbramos.ringprototype.skills
 
 public enum SkillType {
     MELEE_ATTACK,

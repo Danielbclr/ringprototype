@@ -2,9 +2,9 @@ package com.danbramos.ringprototype;
 
 import com.badlogic.gdx.Application;
 import com.badlogic.gdx.Gdx;
-import com.danbramos.ringprototype.battle.Skill;
-import com.danbramos.ringprototype.battle.SkillData;
-import com.danbramos.ringprototype.battle.SkillType;
+import com.danbramos.ringprototype.battle.skills.Skill;
+import com.danbramos.ringprototype.battle.skills.SkillData;
+import com.danbramos.ringprototype.battle.skills.SkillType;
 import com.danbramos.ringprototype.battle.StatusEffect;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,7 +15,6 @@ import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Example test showing how to use the SkillData system
@@ -36,7 +35,7 @@ public class SkillDataTest {
     public void testLoadSkills() {
         // Get the singleton instance
         SkillData skillData = SkillData.getInstance();
-        
+
         // Get a specific skill by ID
         Skill slash = skillData.getSkill("skill_slash");
         assertNotNull("Slash skill should be loaded", slash);
@@ -46,7 +45,7 @@ public class SkillDataTest {
         assertEquals("1d8", slash.getDamageRoll());
         assertEquals(0, slash.getAoeRadius());
         assertEquals("WARRIOR", slash.getRequiredClass());
-        
+
         // Get a skill with status effects
         Skill fireball = skillData.getSkill("skill_fireball");
         assertNotNull("Fireball skill should be loaded", fireball);
@@ -56,11 +55,11 @@ public class SkillDataTest {
         assertEquals("BURN", burnEffect.getType());
         assertEquals(0.5f, burnEffect.getChance(), 0.01f);
         assertEquals(3, burnEffect.getDuration());
-        
+
         // Get all skills for a class
         List<Skill> warriorSkills = skillData.getSkillsForClass("WARRIOR");
         assertFalse("Warrior should have skills", warriorSkills.isEmpty());
-        assertTrue("Warrior should have slash skill", 
+        assertTrue("Warrior should have slash skill",
                 warriorSkills.stream().anyMatch(s -> s.getName().equals("Slash")));
     }
-} 
+}

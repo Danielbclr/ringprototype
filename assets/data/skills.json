@@ -4,6 +4,7 @@
       "id": "skill_slash",
       "name": "Slash",
       "description": "A basic melee attack.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.DefaultSingleTargetDamageExecutor",
       "skillType": "MELEE_ATTACK",
       "range": 1,
       "damageFormula": "1d8",
@@ -18,6 +19,7 @@
       "id": "skill_precise_shot",
       "name": "Precise Shot",
       "description": "A single arrow shot.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.DefaultSingleTargetDamageExecutor",
       "skillType": "RANGED_SINGLE_TARGET",
       "range": 5,
       "damageFormula": "1d6",
@@ -32,6 +34,7 @@
       "id": "skill_explosive_arrow",
       "name": "Explosive Arrow",
       "description": "An arrow that explodes on impact.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.DefaultAoeSkillExecutor",
       "skillType": "RANGED_AOE_CIRCLE",
       "range": 5,
       "damageFormula": "1d4",
@@ -52,6 +55,7 @@
       "id": "skill_cleave",
       "name": "Cleave",
       "description": "A sweeping attack that hits multiple enemies.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.DefaultAoeSkillExecutor",
       "skillType": "MELEE_ATTACK",
       "range": 1,
       "damageFormula": "1d6",
@@ -66,6 +70,7 @@
       "id": "skill_whirlwind",
       "name": "Whirlwind",
       "description": "Spin in a circle, hitting all adjacent enemies.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.DefaultAoeSkillExecutor",
       "skillType": "MELEE_ATTACK",
       "range": 1,
       "damageFormula": "1d4",
@@ -86,6 +91,7 @@
       "id": "skill_barrage",
       "name": "Arrow Barrage",
       "description": "Fire multiple arrows at once in a pattern.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.DefaultAoeSkillExecutor",
       "skillType": "RANGED_AOE_CIRCLE",
       "range": 4,
       "damageFormula": "2d4",
@@ -100,6 +106,7 @@
       "id": "skill_healing_herbs",
       "name": "Healing Herbs",
       "description": "Use herbs to heal an ally or yourself.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.HealSkillExecutor",
       "skillType": "HEAL",
       "range": 2,
       "damageFormula": "2d4",
@@ -114,6 +121,7 @@
       "id": "skill_fireball",
       "name": "Fireball",
       "description": "Cast a ball of fire that explodes on impact.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.DefaultAoeSkillExecutor",
       "skillType": "RANGED_AOE_CIRCLE",
       "range": 6,
       "damageFormula": "2d6",
@@ -134,6 +142,7 @@
       "id": "skill_light_of_valinor",
       "name": "Light of Valinor",
       "description": "Unleash a blinding light that damages enemies and heals allies.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.LightOfValinorSkillExecutor",
       "skillType": "RANGED_AOE_CIRCLE",
       "range": 3,
       "damageFormula": "3d6",
@@ -149,6 +158,91 @@
           "duration": 2
         }
       ]
+    },
+    {
+      "id": "skill_backstab",
+      "name": "Backstab",
+      "description": "A precision attack that deals 1d4 damage. Deals 3x damage if the target is adjacent to an ally or if the user is invisible.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.BackstabSkillExecutor",
+      "skillType": "MELEE_ATTACK",
+      "range": 1,
+      "damageFormula": "1d4",
+      "aoeRadius": 0,
+      "manaCost": 0,
+      "cooldown": 0,
+      "requiredClass": "ROGUE",
+      "requiredLevel": 1,
+      "statusEffects": []
+    },
+    {
+      "id": "skill_stealth",
+      "name": "Stealth",
+      "description": "Become invisible to enemies.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.StealthSkillExecutor",
+      "skillType": "SUPPORT",
+      "range": 0,
+      "damageFormula": "",
+      "aoeRadius": 0,
+      "manaCost": 0,
+      "cooldown": 0,
+      "requiredClass": "ROGUE",
+      "requiredLevel": 1,
+      "statusEffects": [
+        {
+          "type": "INVISIBLE",
+          "chance": 1.0,
+          "duration": 3
+        }
+      ]
+    },
+    {
+      "id": "skill_crippling_strike",
+      "name": "Crippling Strike",
+      "description": "An attack that deals 1d4 damage, slows the target, and reduces their damage output by 1.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.CripplingStrikeSkillExecutor",
+      "skillType": "MELEE_ATTACK",
+      "range": 1,
+      "damageFormula": "1d4",
+      "aoeRadius": 0,
+      "manaCost": 0,
+      "cooldown": 0,
+      "requiredClass": "ROGUE",
+      "requiredLevel": 1,
+      "statusEffects": [
+        {
+          "type": "SLOW",
+          "chance": 1.0,
+          "duration": 2
+        },
+        {
+          "type": "DAMAGE_REDUCTION",
+          "value": 1,
+          "chance": 1.0,
+          "duration": 2
+        }
+      ]
+    },
+    {
+      "id": "skill_nimble_movement",
+      "name": "Nimble Movement",
+      "description": "Temporarily increases movement range by 5 tiles for this turn.",
+      "executorClassName": "com.danbramos.ringprototype.battle.skills.executors.NimbleMovementSkillExecutor",
+      "skillType": "SUPPORT",
+      "range": 0,
+      "damageFormula": "",
+      "aoeRadius": 0,
+      "manaCost": 0,
+      "cooldown": 0,
+      "requiredClass": "ROGUE",
+      "requiredLevel": 1,
+      "statusEffects": [
+        {
+          "type": "NIMBLE_MOVEMENT_ACTIVE",
+          "value": 5,
+          "chance": 1.0,
+          "duration": 1
+        }
+      ]
     }
   ]
-} 
+}

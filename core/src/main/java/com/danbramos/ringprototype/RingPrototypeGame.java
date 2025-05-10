@@ -9,25 +9,19 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
-import com.danbramos.ringprototype.party.Character;
+import com.badlogic.gdx.utils.ObjectMap;
 import com.danbramos.ringprototype.party.ClassData;
-import com.danbramos.ringprototype.party.GameCharacter;
-import com.danbramos.ringprototype.party.GameClass;
 import com.danbramos.ringprototype.party.PartyManager;
 import com.danbramos.ringprototype.party.DefaultPartyManager;
 import com.danbramos.ringprototype.screens.MapScreen;
-import com.danbramos.ringprototype.items.Item;
-import com.danbramos.ringprototype.items.ItemType;
 import com.danbramos.ringprototype.battle.Enemy;
 import com.danbramos.ringprototype.battle.EnemyData;
-import com.danbramos.ringprototype.battle.Skill;
-import com.danbramos.ringprototype.battle.SkillType;
+import com.danbramos.ringprototype.battle.skills.Skill;
 import com.danbramos.ringprototype.quests.QuestManager;
 import com.danbramos.ringprototype.resources.ResourceManager; // Import ResourceManager interface
 import com.danbramos.ringprototype.resources.DefaultResourceManager; // Import DefaultResourceManager implementation
-import com.danbramos.ringprototype.resources.ResourceType;   // Import ResourceType
 import com.badlogic.gdx.utils.Array;
-import com.danbramos.ringprototype.battle.SkillData;
+import com.danbramos.ringprototype.battle.skills.SkillData;
 import com.danbramos.ringprototype.setup.GameSetup; // Import the new setup class
 
 /**
@@ -36,6 +30,8 @@ import com.danbramos.ringprototype.setup.GameSetup; // Import the new setup clas
 public class RingPrototypeGame extends Game {
     public SpriteBatch batch;
     public AssetManager assetManager;
+    // Map to store dynamically generated textures
+    private ObjectMap<String, TextureRegion> dynamicTextures;
     public PartyManager partyManager;
     public ResourceManager resourceManager;
     public Skin skin;
@@ -46,6 +42,7 @@ public class RingPrototypeGame extends Game {
     public void create() {
         batch = new SpriteBatch();
         assetManager = new AssetManager();
+        dynamicTextures = new ObjectMap<>();
         partyManager = new DefaultPartyManager();
         resourceManager = new DefaultResourceManager();
         currentBattleEnemies = new Array<>();
@@ -53,16 +50,16 @@ public class RingPrototypeGame extends Game {
         // Initialize the data systems first so other systems can use them
         ClassData.getInstance();
         Gdx.app.log("RingPrototypeGame", "ClassData initialized");
-        
+
         EnemyData.getInstance();
         Gdx.app.log("RingPrototypeGame", "EnemyData initialized");
-        
+
         QuestManager.getInstance();
         Gdx.app.log("RingPrototypeGame", "QuestManager initialized");
-        
+
         SkillData skillData = SkillData.getInstance();
         Gdx.app.log("RingPrototypeGame", "SkillData initialized");
-        
+
         // Debug log to verify skills are loaded
         StringBuilder skillsLog = new StringBuilder("Loaded skills: ");
         for (String skillId : skillData.getAllSkills().keySet()) {
@@ -82,6 +79,9 @@ public class RingPrototypeGame extends Game {
         } catch (Exception e) {
             Gdx.app.error("RingPrototypeGame", "Could not load character spritesheet.", e);
         }
+        
+        // Load battle UI assets
+        loadBattleUIAssets();
 
         try {
             skin = new Skin(Gdx.files.internal("ui/uiskin.json"));
@@ -91,7 +91,7 @@ public class RingPrototypeGame extends Game {
             skin = createFallbackSkin();
             Gdx.app.log("RingPrototypeGame", "Using fallback UI skin.");
         }
-        
+
         // Initialize game state using the new setup class
         GameSetup gameSetup = new GameSetup();
         gameSetup.initializeInitialResources(resourceManager);
@@ -103,6 +103,77 @@ public class RingPrototypeGame extends Game {
 
         Gdx.app.log("RingPrototypeGame", "Game created, setting MapScreen.");
         this.setScreen(new MapScreen(this));
+    }
+    
+    /**
+     * Loads all battle UI assets including status effect icons and turn indicators
+     */
+    private void loadBattleUIAssets() {
+        try {
+            // Load turn indicators
+            createTurnIndicator("turn_indicator_player", true);
+            createTurnIndicator("turn_indicator_enemy", false);
+            
+            // Create status effect icons
+            createStatusEffectIcon("status_invisible", 0, 0.8f, 0.8f, 1);
+            createStatusEffectIcon("status_burn", 0.8f, 0.2f, 0, 1);
+            createStatusEffectIcon("status_stun", 0.8f, 0.8f, 0, 1);
+            createStatusEffectIcon("status_slow", 0, 0, 0.8f, 1);
+            createStatusEffectIcon("status_defense", 0, 0.8f, 0, 1);
+            createStatusEffectIcon("status_nimble", 0.8f, 0, 0.8f, 1);
+            createStatusEffectIcon("status_generic", 0.7f, 0.7f, 0.7f, 1);
+            
+            Gdx.app.log("RingPrototypeGame", "Battle UI assets loaded successfully.");
+        } catch (Exception e) {
+            Gdx.app.error("RingPrototypeGame", "Failed to load battle UI assets. Using placeholder textures.", e);
+        }
+    }
+    
+    /**
+     * Creates a turn indicator icon and stores it in the dynamic textures map
+     */
+    private void createTurnIndicator(String key, boolean isPlayerTurn) {
+        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(16, 16, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        pixmap.setColor(isPlayerTurn ? com.badlogic.gdx.graphics.Color.YELLOW : com.badlogic.gdx.graphics.Color.RED);
+        
+        // Draw a simple arrow pointing down
+        pixmap.fillTriangle(8, 2, 2, 10, 14, 10);
+        pixmap.fillRectangle(6, 8, 4, 6);
+        
+        Texture iconTexture = new Texture(pixmap);
+        pixmap.dispose();
+        
+        // Store for future use
+        dynamicTextures.put(key, new TextureRegion(iconTexture));
+    }
+    
+    /**
+     * Creates a status effect icon and stores it in the dynamic textures map
+     */
+    private void createStatusEffectIcon(String key, float r, float g, float b, float a) {
+        com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(16, 16, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
+        pixmap.setColor(r, g, b, a);
+        pixmap.fillCircle(8, 8, 7);
+        
+        Texture iconTexture = new Texture(pixmap);
+        pixmap.dispose();
+        
+        // Store for future use
+        dynamicTextures.put(key, new TextureRegion(iconTexture));
+    }
+    
+    /**
+     * Gets a dynamic texture by key, or null if it doesn't exist
+     */
+    public TextureRegion getDynamicTexture(String key) {
+        return dynamicTextures.get(key);
+    }
+    
+    /**
+     * Stores a dynamic texture for later use
+     */
+    public void addDynamicTexture(String key, TextureRegion region) {
+        dynamicTextures.put(key, region);
     }
 
     /**
@@ -122,7 +193,7 @@ public class RingPrototypeGame extends Game {
         } else {
             Gdx.app.error("RingPrototypeGame", "Cannot set party marker sprite, characterSheet is null.");
         }
-        
+
         // Enemy initialization moved to BattleScreen
         // Party initialization moved to GameSetup
         // Resource initialization moved to GameSetup
@@ -140,18 +211,18 @@ public class RingPrototypeGame extends Game {
         pixmap.fill();
         com.badlogic.gdx.graphics.Texture pixmapTexture = new com.badlogic.gdx.graphics.Texture(pixmap);
         pixmap.dispose();
-        
+
         // Add the white texture to the skin
         skin.add("white-pixel", new TextureRegion(pixmapTexture), TextureRegion.class);
         TextureRegionDrawable whiteDrawable = new TextureRegionDrawable(skin.getRegion("white-pixel"));
-        
+
         // Create darker drawables for selection and background
         com.badlogic.gdx.graphics.Pixmap darkPixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         darkPixmap.setColor(new com.badlogic.gdx.graphics.Color(0.2f, 0.2f, 0.2f, 1f));
         darkPixmap.fill();
         com.badlogic.gdx.graphics.Texture darkTexture = new com.badlogic.gdx.graphics.Texture(darkPixmap);
         darkPixmap.dispose();
-        
+
         skin.add("dark-pixel", new TextureRegion(darkTexture), TextureRegion.class);
         TextureRegionDrawable darkDrawable = new TextureRegionDrawable(skin.getRegion("dark-pixel"));
 
@@ -166,7 +237,7 @@ public class RingPrototypeGame extends Game {
         textButtonStyle.font = skin.getFont("default-font");
         textButtonStyle.fontColor = com.badlogic.gdx.graphics.Color.WHITE;
         textButtonStyle.up = darkDrawable;
-        textButtonStyle.down = whiteDrawable; 
+        textButtonStyle.down = whiteDrawable;
         textButtonStyle.over = new TextureRegionDrawable(skin.getRegion("dark-pixel")).tint(new com.badlogic.gdx.graphics.Color(0.3f, 0.3f, 0.3f, 1f));
         skin.add("default", textButtonStyle);
 
@@ -183,16 +254,16 @@ public class RingPrototypeGame extends Game {
         com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle scrollPaneStyle = new com.badlogic.gdx.scenes.scene2d.ui.ScrollPane.ScrollPaneStyle();
         scrollPaneStyle.background = darkDrawable;
         skin.add("default", scrollPaneStyle);
-        
+
         // Window style for DialogScreen
         com.badlogic.gdx.scenes.scene2d.ui.Window.WindowStyle windowStyle = new com.badlogic.gdx.scenes.scene2d.ui.Window.WindowStyle();
         windowStyle.titleFont = skin.getFont("default-font");
         windowStyle.background = darkDrawable;
         windowStyle.titleFontColor = com.badlogic.gdx.graphics.Color.WHITE;
         skin.add("default", windowStyle);
-        
+
         Gdx.app.log("RingPrototypeGame", "Created fallback skin with all required styles");
-        
+
         return skin;
     }
 
@@ -209,6 +280,15 @@ public class RingPrototypeGame extends Game {
         }
         batch.dispose();
         assetManager.dispose();
+        
+        // Dispose all dynamic textures
+        for (TextureRegion region : dynamicTextures.values()) {
+            if (region.getTexture() != null) {
+                region.getTexture().dispose();
+            }
+        }
+        dynamicTextures.clear();
+        
         if (skin != null) {
             skin.dispose();
         }

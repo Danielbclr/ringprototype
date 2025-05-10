@@ -16,12 +16,14 @@
   "healthPerLevel": 4,
   "manaPerLevel": 3,
   "startingSkills": [
-    "backstab",
-    "stealth"
+    "skill_backstab",
+    "skill_stealth",
+    "skill_crippling_strike",
+    "skill_nimble_movement"
   ],
   "startingItems": [
     "dagger",
     "leather_armor",
     "thieves_tools"
   ]
-} 
+}

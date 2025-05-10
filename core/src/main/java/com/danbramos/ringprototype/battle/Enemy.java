@@ -6,6 +6,10 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array; // Import Array for allCombatants
 import com.danbramos.ringprototype.screens.BattleScreen; // To use utility methods like isTileOccupied
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Random;
 
 public class Enemy implements IBattleActor {
@@ -17,6 +21,7 @@ public class Enemy implements IBattleActor {
     private Vector2 battleMapPosition;
     private boolean hasTakenTurn;
     private int movementRange; // Added movement range
+    private List<StatusEffect> activeEffects; // Added status effects
 
     private static final Random random = new Random();
 
@@ -29,6 +34,7 @@ public class Enemy implements IBattleActor {
         this.battleMapPosition = new Vector2(startX, startY);
         this.hasTakenTurn = false;
         this.movementRange = movementRange; // Initialize movement range
+        this.activeEffects = new ArrayList<>(); // Initialize status effects
     }
 
     // ... (getName, getCurrentHp, getMaxHp, getBattleSprite, getBattleMapPosition, setBattleMapPosition are the same) ...
@@ -83,11 +89,21 @@ public class Enemy implements IBattleActor {
 
     @Override
     public void takeDamage(int amount) {
-        this.currentHp -= amount;
+        // Apply damage reduction from status effects
+        int modifiedAmount = amount;
+        for (StatusEffect effect : activeEffects) {
+            if (effect.getType().equals("DAMAGE_REDUCTION") && effect.getRemainingDuration() > 0) {
+                modifiedAmount -= effect.getValue();
+                Gdx.app.log(getName(), "Damage reduced by " + effect.getValue() + " due to " + effect.getType());
+            }
+        }
+        modifiedAmount = Math.max(0, modifiedAmount); // Ensure damage is not negative
+
+        this.currentHp -= modifiedAmount;
         if (this.currentHp < 0) {
             this.currentHp = 0;
         }
-        Gdx.app.log(getName(), "took " + amount + " damage. HP: " + currentHp + "/" + maxHp);
+        Gdx.app.log(getName(), "took " + modifiedAmount + " damage. HP: " + currentHp + "/" + maxHp);
     }
 
     @Override
@@ -141,8 +157,8 @@ public class Enemy implements IBattleActor {
 
     @Override
     public void startTurn() {
-        this.setHasTakenTurn(false);
-        Gdx.app.log(getName(), "'s turn started.");
+        this.hasTakenTurn = false;
+        tickStatusEffects(); // Tick effects at the start of the turn
     }
 
     @Override
@@ -152,12 +168,12 @@ public class Enemy implements IBattleActor {
 
     @Override
     public boolean hasPerformedMajorAction() {
-        return this.hasTakenTurn;
+        return hasTakenTurn;
     }
 
     @Override
     public void setHasPerformedMajorAction(boolean value) {
-        this.setHasTakenTurn(value);
+        this.hasTakenTurn = value;
     }
 
     /**
@@ -221,7 +237,7 @@ public class Enemy implements IBattleActor {
                 float newX = current.position.x + dir[0];
                 float newY = current.position.y + dir[1];
                 Vector2 newPos = new Vector2(newX, newY);
-                
+
                 // Check if the move is valid
                 boolean alreadyVisited = false;
                 for (Vector2 v : visited) {
@@ -230,18 +246,12 @@ public class Enemy implements IBattleActor {
                         break;
                     }
                 }
-                
+
                 if (!alreadyVisited && battleScreen.isTileWithinMapBounds(newX, newY)) {
-                    // Don't check for occupation for the final position if we're trying to move next to the target
-                    boolean isValidPosition = true;
-                    
-                    // Skip occupation check if this would be adjacent to the target
-                    boolean adjacentToTarget = Math.abs(newX - targetPos.x) + Math.abs(newY - targetPos.y) <= 1;
-                    if (!adjacentToTarget) {
-                        isValidPosition = !battleScreen.isTileOccupied(newX, newY);
-                    }
-                    
-                    if (isValidPosition) {
+                    // The new position must be unoccupied to be a valid step/destination.
+                    // battleScreen.isTileOccupied() checks if any actor is on the tile.
+                    // We are looking for a tile to move TO, which must be empty.
+                    if (!battleScreen.isTileOccupied(newX, newY)) {
                         PathNode newNode = new PathNode(newPos, current, current.movesUsed + 1);
                         queue.add(newNode);
                         visited.add(newPos);
@@ -249,41 +259,34 @@ public class Enemy implements IBattleActor {
                 }
             }
         }
-        
+
         // If we found a valid move
         if (bestMove != null) {
-            Gdx.app.log(getName(), "Best move is at " + bestMove.position + " with " + bestMove.movesUsed + " moves used");
-            
-            // Trace back to the first move in the path
-            PathNode pathNode = bestMove;
-            
-            // If this is the starting position, return null (no movement)
-            if (pathNode.parent == null) {
-                Gdx.app.log(getName(), "No valid movement found - staying at current position");
-                return null;
+            Gdx.app.log(getName(), "Best move candidate found at " + bestMove.position + " (moves: " + bestMove.movesUsed + ", distSqToTarget: " + bestDistanceSq + ")");
+
+            // Log the full path for debugging (shows how we reached bestMove.position)
+            StringBuilder pathLog = new StringBuilder("Path to best move: ");
+            PathNode tempNode = bestMove;
+            Array<Vector2> pathSegments = new Array<>(); // To log in correct order (Start -> ... -> End)
+            while (tempNode != null) {
+                pathSegments.insert(0, tempNode.position); // Insert at beginning to build reversed path
+                tempNode = tempNode.parent;
             }
-            
-            // Trace back the path to the first step
-            while (pathNode.parent != null && pathNode.parent.parent != null) {
-                pathNode = pathNode.parent;
-            }
-            
-            // Log the full path for debugging
-            StringBuilder pathLog = new StringBuilder("Movement path: ");
-            PathNode temp = bestMove;
-            while (temp != null) {
-                pathLog.append(temp.position);
-                if (temp.parent != null) {
-                    pathLog.append(" <- ");
+            for(int i = 0; i < pathSegments.size; i++) {
+                pathLog.append(pathSegments.get(i));
+                if (i < pathSegments.size - 1) {
+                    pathLog.append(" -> ");
                 }
-                temp = temp.parent;
             }
             Gdx.app.log(getName(), pathLog.toString());
-            
-            return pathNode.position;
+
+            // The bestMove.position is the destination tile after using up to maxMovement moves
+            // along the path segment that gets closest to the target.
+            // The calling code in performSimpleAI will handle if bestMove.position is the current position.
+            return bestMove.position;
         }
-        
-        Gdx.app.log(getName(), "No valid path found");
+
+        Gdx.app.log(getName(), "No valid path found or no better position found within movement range.");
         return null;
     }
     
@@ -336,6 +339,11 @@ public class Enemy implements IBattleActor {
         for (IBattleActor actor : allCombatants) {
             if (actor instanceof BattleCharacter && actor.isAlive()) {
                 BattleCharacter bc = (BattleCharacter) actor;
+                // Check if the target is invisible
+                if (bc.hasStatusEffect("INVISIBLE")) {
+                    Gdx.app.log(getName(), "Ignoring invisible target: " + bc.getName());
+                    continue; // Skip this target
+                }
                 float distSq = currentPos.dst2(bc.getBattleMapPosition());
                 if (distSq < minDistanceSq) {
                     minDistanceSq = distSq;
@@ -434,6 +442,54 @@ public class Enemy implements IBattleActor {
             this.position = position;
             this.parent = parent;
             this.movesUsed = movesUsed;
+        }
+    }
+
+    // --- Status Effect Management ---
+    public void addStatusEffect(StatusEffect newEffect) {
+        if (newEffect == null) return;
+
+        // Check for existing effect of the same type
+        boolean effectExists = false;
+        for (StatusEffect existingEffect : activeEffects) {
+            if (existingEffect.getType().equals(newEffect.getType())) {
+                existingEffect.reset(); // Refresh duration of existing effect
+                effectExists = true;
+                break;
+            }
+        }
+        if (!effectExists) {
+            activeEffects.add(newEffect.copy()); // Add a copy to prevent external modification issues
+        }
+        Gdx.app.log(getName(), "Status effect applied: " + newEffect.getType());
+    }
+
+    public void removeStatusEffect(StatusEffect effectToRemove) {
+        if (effectToRemove == null) return;
+        activeEffects.removeIf(effect -> effect.getType().equals(effectToRemove.getType()));
+    }
+
+    public boolean hasStatusEffect(String effectType) {
+        for (StatusEffect effect : activeEffects) {
+            if (effect.getType().equals(effectType) && effect.getRemainingDuration() > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<StatusEffect> getActiveEffects() {
+        return Collections.unmodifiableList(activeEffects);
+    }
+
+    private void tickStatusEffects() {
+        Iterator<StatusEffect> iterator = activeEffects.iterator();
+        while (iterator.hasNext()) {
+            StatusEffect effect = iterator.next();
+            if (!effect.tick()) { // tick() decrements duration and returns false if expired
+                iterator.remove();
+                Gdx.app.log(getName(), "Status effect expired: " + effect.getType());
+            }
         }
     }
 }

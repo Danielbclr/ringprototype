@@ -56,7 +56,7 @@
           "requiredClass": {
             "type": "string",
             "description": "Class required to use this skill (if any)",
-            "enum": ["WARRIOR", "RANGER", "WIZARD", "HOBBIT", "ANY"]
+            "enum": ["WARRIOR", "RANGER", "WIZARD", "HOBBIT", "ROGUE", "ANY"]
           },
           "requiredLevel": {
             "type": "integer",
@@ -72,7 +72,7 @@
                 "type": {
                   "type": "string",
                   "description": "Type of status effect",
-                  "enum": ["BURN", "POISON", "STUN", "SLOW", "BLEED"]
+                  "enum": ["BURN", "POISON", "STUN", "SLOW", "BLEED", "INVISIBLE", "DAMAGE_REDUCTION", "NIMBLE_MOVEMENT_ACTIVE"]
                 },
                 "chance": {
                   "type": "number",
@@ -84,6 +84,10 @@
                   "type": "integer",
                   "description": "Duration of the effect in turns",
                   "minimum": 1
+                },
+                "value": {
+                  "type": "integer",
+                  "description": "Magnitude of the effect (e.g., damage amount, stat change, movement bonus)"
                 }
               }
             }

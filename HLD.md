@@ -61,7 +61,7 @@ Below is the order of priority for building out modules and key classes. Each "p
 *   **Character & PartyManager** (`com.danbramos.ringprototype.party`) - **Implemented**
     *   **Character**: `name`, `gameClass`, `level`, `healthPoints`, `manaPoints`, `skills`, `inventory` (basic), `battleSprite`, `movementRange`. - **Implemented**
     *   **PartyManager**: List of active members, add/remove. - **Implemented**
-*   **Skill, ClassData** (`com.danbramos.ringprototype.battle.Skill`, `com.danbramos.ringprototype.party.ClassData`) - **Implemented**
+*   **Skill, ClassData** (`com.danbramos.ringprototype.battle.skills.Skill`, `com.danbramos.ringprototype.party.ClassData`) - **Implemented**
     *   Skills loaded from JSON (`skills.json`, `skill-schema.json`).
     *   ClassData loads placeholder class info. (Perks, full ClassTree not yet implemented)
 *   **Race, Trait** (Not yet implemented)

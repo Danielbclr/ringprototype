@@ -8,6 +8,7 @@ public class StatusEffect {
     private float chance;
     private int duration;
     private int remainingDuration;
+    private int value; // Added for magnitude of the effect
     
     /**
      * Constructor for a status effect
@@ -15,12 +16,21 @@ public class StatusEffect {
      * @param type The type of effect
      * @param chance The chance to apply it (0-1)
      * @param duration The duration in turns
+     * @param value The magnitude of the effect (e.g., damage amount, stat change)
      */
-    public StatusEffect(String type, float chance, int duration) {
+    public StatusEffect(String type, float chance, int duration, int value) {
         this.type = type;
         this.chance = chance;
         this.duration = duration;
         this.remainingDuration = duration;
+        this.value = value;
+    }
+
+    /**
+     * Constructor for a status effect without a specific value (defaults to 0 or not applicable)
+     */
+    public StatusEffect(String type, float chance, int duration) {
+        this(type, chance, duration, 0); // Default value to 0
     }
     
     /**
@@ -54,6 +64,14 @@ public class StatusEffect {
     public int getRemainingDuration() {
         return remainingDuration;
     }
+
+    /**
+     * Get the magnitude of the effect
+     * @return The value of the effect
+     */
+    public int getValue() {
+        return value;
+    }
     
     /**
      * Decrement the remaining duration by 1
@@ -78,11 +96,16 @@ public class StatusEffect {
      * @return A new instance with the same properties
      */
     public StatusEffect copy() {
-        return new StatusEffect(type, chance, duration);
+        return new StatusEffect(type, chance, duration, value);
     }
     
     @Override
     public String toString() {
-        return type + " (" + (int)(chance * 100) + "%, " + duration + " turns)";
+        String str = type + " (" + (int)(chance * 100) + "%, " + remainingDuration + "/" + duration + " turns";
+        if (value != 0) {
+            str += ", val: " + value;
+        }
+        str += ")";
+        return str;
     }
 } 
